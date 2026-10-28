@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { codespacesHost } from "@/lib/codespaces.mjs";
 
 export async function authenticate(form: FormData) {
   const email = String(form.get("email") ?? "").trim();
@@ -13,7 +14,8 @@ export async function authenticate(form: FormData) {
   if (register && (!fullName || fullName.length > 150 || password.length < 8)) return { error: "Enter your name (up to 150 characters) and a password of at least 8 characters." };
   const client = await createClient();
   if (register) {
-    const origin = (await headers()).get("origin");
+    const host = codespacesHost(process.env);
+    const origin = host ? `https://${host}` : (await headers()).get("origin");
     const { data, error } = await client.auth.signUp({ email, password, options: {
       data: { full_name: fullName },
       ...(origin ? { emailRedirectTo: `${origin}/auth/callback` } : {}),

@@ -12,6 +12,14 @@ Use Node.js 22.18+ and npm. Run `npm ci`, then `npm run dev` and open http://loc
 
 `.env.local` is configured locally with the connected project's API URL and enabled legacy anon key. It is ignored by Git. On another checkout, copy `.env.example` to `.env.local` and supply that project's URL and anon key. Never put a service role or secret key in a `NEXT_PUBLIC_` variable. No service role key is used by this application.
 
+## GitHub Codespaces
+
+Create a Codespace from `main`, configure its ignored `.env.local` with the same two Supabase values, then run `npm ci`, `npm run build` and `npm start -- --hostname 0.0.0.0`. Open port **3000** from the Ports panel in a separate browser tab. Keep the Codespace running while testing.
+
+The app derives the exact forwarded hostname from GitHub's `CODESPACE_NAME` and `GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN`. In Codespaces only, Server Actions accept that host and the `localhost:3000` Origin used by its embedded preview. Other origins remain blocked. Development assets allow only that Codespace's exact host. Confirmation links and callback redirects use the public HTTPS hostname.
+
+In Supabase Authentication → URL Configuration, use `https://<your-codespace>-3000.app.github.dev` as Site URL and add the same URL plus `/auth/callback` to Redirect URLs. These must match the current Codespace. Restart/rebuild after pulling configuration changes; reload the browser tab so its Server Action IDs match the current build.
+
 ## Database and migrations
 
 SQL lives in `supabase/migrations`, in order: foundations (PostGIS, enums, tables, triggers, grants and RLS), storage (private bucket and object policies), demo stations, consolidated station read policies, and citizen reporting (`my_reports` RPC restricted to the signed-in reporter). These migrations have been applied to the connected FindIT project. Do not reapply them to that existing database. The station seed runs as a migration so it runs once.
@@ -48,6 +56,7 @@ Required report fields: title, category, color, description, date and location t
 
 - `npm run build` and `npm run typecheck`: production compilation and types.
 - `npm test`: seven tests covering live anonymous API access, report validation, forged/oversized image rejection and valid image re-encoding.
+- `node --env-file=.env.local scripts/test-codespaces.mjs`: regression check against a built, running Codespaces-configured app. Verifies both public and localhost Origins, rejection of unrelated origins, and a public confirmation-callback redirect. Run with the same Codespaces environment variables used by the build/server.
 - `npm run test:integration`: run against an already-built, running app using **disposable confirmed test accounts only**. Supply ignored `.env.e2e.local` with `E2E_FIXTURE={"password":"<test-only password>","users":[{"role":"citizen","email":"<test account>"},{"role":"other","email":"<second citizen>"},{"role":"officer","email":"<test officer>"},{"role":"admin","email":"<test admin>"}]}`. These accounts must start without reports. The runner exercises actual Next.js server actions, Supabase Auth/Storage and protected pages; it uses the compiled action manifest. It removes uploaded test photos. Remove its report/account fixtures through the trusted test administrator connection afterward. Test credentials and users from this development session were removed.
 - `supabase/tests/rls.sql`: transactional database assertions for signup role, self/other ownership, private details, officer access, admin access, station writes and forbidden custody/role changes. Test users and reports are rolled back; no test emails are sent.
 - `supabase/verify.sql`: table RLS, PostGIS, bucket constraints, station seed and policy inspection.
