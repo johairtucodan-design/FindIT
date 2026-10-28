@@ -2,12 +2,14 @@
   "name": "findit",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --env-file=.env.local --test tests/*.test.mjs"
+    "test": "node --env-file=.env.local --test tests/*.test.mjs",
+    "test:integration": "node --env-file=.env.local --env-file=.env.e2e.local scripts/integration.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",
@@ -15,7 +17,8 @@
     "next": "16.4.3",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "server-only": "0.0.1"
+    "server-only": "0.0.1",
+    "sharp": "0.35.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",

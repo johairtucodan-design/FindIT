@@ -13,7 +13,7 @@ export async function createClient() {
         try {
           values.forEach(({ name, value, options }) => store.set(name, value, options));
         } catch {
-          // Server Components cannot set cookies; proxy refreshes them in Iteration 2.
+          // Server Components cannot set cookies; proxy refreshes the session.
         }
       },
     },

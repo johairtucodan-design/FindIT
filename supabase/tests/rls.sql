@@ -40,6 +40,7 @@ begin
   assert (select status = 'open' from public_items where title = 'RLS lost');
   assert (select status = 'pending_surrender' and held_at_station_id is null from public_items where title = 'RLS found');
   assert (select private_details = 'Secret found' from public.item_detail((select id from public_items where title = 'RLS found')));
+  assert (select count(*) = 2 from public.my_reports()), 'My reports includes own reports';
   update public.items set description = 'Owner edited' where title = 'RLS found';
   assert (select description = 'Owner edited' from public_items where title = 'RLS found');
   perform pg_temp.expect_denied('select private_details from public.items');
@@ -53,6 +54,7 @@ do $$
 declare affected integer;
 begin
   assert (select count(*) = 0 from public.item_detail((select id from public_items where title = 'RLS found'))), 'Other citizen must not read secrets';
+  assert (select count(*) = 0 from public.my_reports()), 'My reports never includes another citizen reports';
   update public.items set title = 'Tampered' where title = 'RLS found';
   get diagnostics affected = row_count;
   assert affected = 0, 'Other citizen must not edit report';
