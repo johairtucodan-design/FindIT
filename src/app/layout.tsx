@@ -21,7 +21,6 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             <Link href="/" className="text-2xl font-black tracking-tight text-teal-800">FindIT<span className="text-amber-600">.</span></Link>
             <nav aria-label="Main navigation" className="flex flex-wrap items-center gap-4 text-sm font-semibold">
               {user ? <><Link href="/my" className="text-link">My reports</Link><form action={signOut}><button className="text-link">Sign out</button></form></> : <Link href="/auth" className="text-link">Sign in / Register</Link>}
-              <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900">Coursework prototype</span>
             </nav>
           </div>
         </header>
