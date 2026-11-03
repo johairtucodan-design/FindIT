@@ -106,7 +106,7 @@ create function public.station_directory() returns table(id uuid,name text,addre
 revoke all on function public.station_directory() from public;
 grant execute on function public.station_directory() to anon, authenticated;
 
-create function private.moderate_report(target uuid, decision text, safe_title text, safe_description text, safe_area text) returns void language plpgsql  security definer set search_path='' as $fn$ 
+create function private.moderate_report(target uuid, decision text, safe_title text, safe_description text, safe_area text) returns void language plpgsql  security definer set search_path='' as $fn$
 declare i public.items;
 begin
  select * into i from public.items where id=target for update;
@@ -121,7 +121,7 @@ create function public.moderate_report(target uuid, decision text, safe_title te
 revoke all on function public.moderate_report(uuid, text, text, text, text) from public;
 grant execute on function public.moderate_report(uuid, text, text, text, text) to authenticated;
 
-create function private.receive_item(target uuid, station uuid, storage text, confirmed boolean) returns uuid language plpgsql  security definer set search_path='' as $fn$ 
+create function private.receive_item(target uuid, station uuid, storage text, confirmed boolean) returns uuid language plpgsql  security definer set search_path='' as $fn$
 declare i public.items; event_id uuid;
 begin
  select * into i from public.items where id=target for update;
@@ -138,7 +138,7 @@ create function public.receive_item(target uuid, station uuid, storage text, con
 revoke all on function public.receive_item(uuid, uuid, text, boolean) from public;
 grant execute on function public.receive_item(uuid, uuid, text, boolean) to authenticated;
 
-create function private.store_item(target uuid, storage text) returns void language plpgsql  security definer set search_path='' as $fn$ 
+create function private.store_item(target uuid, storage text) returns void language plpgsql  security definer set search_path='' as $fn$
 declare i public.items;
 begin
  select * into i from public.items where id=target for update;
@@ -153,7 +153,7 @@ create function public.store_item(target uuid, storage text) returns void langua
 revoke all on function public.store_item(uuid, text) from public;
 grant execute on function public.store_item(uuid, text) to authenticated;
 
-create function private.submit_claim(target uuid, evidence text) returns uuid language plpgsql  security definer set search_path='' as $fn$ 
+create function private.submit_claim(target uuid, evidence text) returns uuid language plpgsql  security definer set search_path='' as $fn$
 declare result uuid;
 begin
  if auth.uid() is null then raise exception 'Sign in first' using errcode='42501'; end if;
@@ -169,7 +169,7 @@ create function public.submit_claim(target uuid, evidence text) returns uuid lan
 revoke all on function public.submit_claim(uuid, text) from public;
 grant execute on function public.submit_claim(uuid, text) to authenticated;
 
-create function private.withdraw_report(target uuid) returns void language plpgsql  security definer set search_path='' as $fn$ 
+create function private.withdraw_report(target uuid) returns void language plpgsql  security definer set search_path='' as $fn$
 begin
  update public.items set publication_status='withdrawn' where id=target and reporter_id=auth.uid() and publication_status<>'withdrawn';
  if not found then raise exception 'Report unavailable' using errcode='42501'; end if;
