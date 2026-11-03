@@ -6,12 +6,12 @@ import { preparePhoto } from "../src/lib/photo.ts";
 
 function validForm() {
   const form = new FormData();
-  for (const [key, value] of Object.entries({ title: "House keys", category: "Keys", color: "Silver", description: "Blue keyring", location_text: "Demo park", occurred_at: "2026-01-01" })) form.set(key, value);
+  for (const [key, value] of Object.entries({ title: "House keys", category: "Keys", color: "Silver", description: "Blue keyring", location_text: "Demo park", occurred_at: "2026-01-01",contact_method:"test@example.invalid" })) form.set(key, value);
   return form;
 }
 
 test("report validation rejects blank required fields, long values and invalid dates", () => {
-  for (const field of ["title", "category", "color", "description", "location_text", "occurred_at"]) {
+  for (const field of ["title", "category", "color", "description", "location_text", "occurred_at","contact_method"]) {
     const form = validForm(); form.set(field, " ");
     assert.ok(validateReport(form).errors[field]);
   }

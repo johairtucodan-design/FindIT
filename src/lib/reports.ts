@@ -11,15 +11,20 @@ export type Report = {
   occurred_at: string;
   status: string;
   private_details: string | null;
+  contact_method: string | null;
+  intended_station_id: string | null;
+  held_at_station_id: string | null;
+  storage_location: string | null;
+  publication_status: string;
 };
 
-export const statusLabel = (status: string) => status.split("_").map(word => word[0].toUpperCase() + word.slice(1)).join(" ");
+export const statusLabel = (status: string) => status === "pending_surrender" ? "Reported — Not Received" : status === "received_by_police" ? "Received" : status.split("_").map(word => word[0].toUpperCase() + word.slice(1)).join(" ");
 export const editable = (status: string) => status === "open" || status === "pending_surrender";
 export const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 export function validateReport(form: FormData) {
-  const limits = { title: 120, category: 80, color: 80, description: 3000, location_text: 300, private_details: 3000 };
-  const labels = { title: "Title", category: "Category", color: "Color", description: "Description", location_text: "Location", private_details: "Private details" };
+  const limits = { title: 120, category: 80, color: 80, description: 3000, location_text: 300, private_details: 3000, contact_method: 250 };
+  const labels = { title: "Title", category: "Category", color: "Color", description: "Description", location_text: "Location", private_details: "Private details", contact_method: "Private contact method" };
   const values = Object.fromEntries(Object.keys(limits).map(key => [key, String(form.get(key) ?? "").trim()]));
   const errors: Record<string, string> = {};
   for (const [key, limit] of Object.entries(limits)) {

@@ -11,6 +11,8 @@ export async function saveReport(kind: string, id: string | null, form: FormData
   if (kind !== "lost" && kind !== "found") errors.form = "Invalid report type.";
   if (id && !isUuid(id)) errors.form = "Invalid report ID.";
   if (Object.keys(errors).length) return { errors };
+  const station=String(form.get("intended_station_id")??"");
+  if(station&&!isUuid(station)) return {errors:{intended_station_id:"Choose a valid station."}};
   const client = await createClient();
   const { data: { user }, error: userError } = await client.auth.getUser();
   if (userError || !user) return { errors: { form: "Your session expired. Sign in in another tab, then try saving again." } };
@@ -31,7 +33,7 @@ export async function saveReport(kind: string, id: string | null, form: FormData
     const { error } = await client.storage.from("item-photos").upload(photoPath, bytes, { contentType: "image/webp", upsert: false });
     if (error) return { errors: { photo: "Photo upload failed. Please try again. Your report has not been saved." } };
   }
-  const payload = { ...values, occurred_at, ...(photoPath ? { photo_path: photoPath } : {}) };
+  const payload = { ...values, occurred_at, intended_station_id: station||null, ...(photoPath ? { photo_path: photoPath } : {}) };
   const query = id ? client.from("items").update(payload).eq("id", id) : client.from("items").insert({ ...payload, kind });
   const { data, error } = await query.select("id").single();
   if (error || !data) {

@@ -19,7 +19,7 @@ test("public report projection is accessible", async () => {
 });
 
 test("anonymous clients cannot read private details or profiles", async () => {
-  for (const [table, columns] of [["items", "private_details"], ["profiles", "*"]]) {
+  for (const [table, columns] of [["items", "private_details"], ["items","description"], ["items","contact_method"], ["profiles", "*"]]) {
     const { data, error } = await client.from(table).select(columns).limit(1);
     assert.equal(data, null);
     assert.ok(error, `${table} must deny anonymous private access`);

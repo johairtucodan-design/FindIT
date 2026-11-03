@@ -31,14 +31,15 @@ async function login(role) {
   const user = fixture.users.find(user => user.role === role);
   cookieJar.clear();
   const result = await action("authenticate", [], { mode: "login", email: user.email, password: fixture.password });
-  assert.ok(result.response.headers.get("x-action-redirect")?.startsWith("/my"), `Login failed for ${role}: ${result.text.slice(0, 700)}`);
+  const destination=role==="admin"?"/manager":role==="officer"?"/security":"/my";
+  assert.ok(result.response.headers.get("x-action-redirect")?.startsWith(destination), `Login failed for ${role}`);
   client = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, { auth: { persistSession: false } });
   const { error } = await client.auth.signInWithPassword({ email: user.email, password: fixture.password });
   assert.equal(error, null);
   return user;
 }
 
-const fields = { title: "E2E keys", category: "Keys", color: "Silver", description: "Disposable coursework fixture", occurred_at: "2026-01-01", location_text: "Fictional test park", private_details: "Private test engraving" };
+const fields = { title: "E2E keys", category: "Keys", color: "Silver", description: "Disposable coursework fixture", occurred_at: "2026-01-01", location_text: "Fictional test park", private_details: "Private test engraving",contact_method:"test@example.invalid", intended_station_id:fixture.station_id??"" };
 const reportIds = [];
 const photos = [];
 try {

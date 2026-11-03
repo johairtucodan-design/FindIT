@@ -1,7 +1,19 @@
-import { requireRole } from "@/lib/auth";
-
-export default async function SecurityPage() {
-  await requireRole(["officer", "admin"]);
-  return <section className="panel"><p className="eyebrow">Officer workspace</p><h1 className="page-title">Security</h1><p className="muted mt-4">Receipt and custody screens are planned for a later iteration.</p></section>;
-  // TODO: Police receipt and custody workflow.
+import Link from "next/link";
+import {requireRole} from "@/lib/auth";
+import {statusLabel,type Report} from "@/lib/reports";
+import WorkflowForm from "@/app/workflow-form";
+import {operate} from "@/app/operations";
+export default async function Security({searchParams}:{searchParams:Promise<{q?:string;status?:string;tab?:string}>}){
+ const {client,user}=await requireRole(["officer","admin"]);const filters=await searchParams;
+ const {data,error}=await client.rpc("staff_reports");if(error)throw new Error("Unable to load station records");
+ const {data:profile}=await client.from("profiles").select("station_id,role").eq("id",user.id).single();
+ const {data:claims}=await client.from("claims").select("id,item_id,status");const reports=(data??[]) as Report[];
+ const list=reports.filter(r=>(!filters.q||`${r.id} ${r.title}`.toLowerCase().includes(filters.q.toLowerCase()))&&(!filters.status||r.status===filters.status)&&(filters.tab!=="inventory"||Boolean(r.held_at_station_id)));
+ return <><p className="eyebrow">Station workspace</p><h1 className="page-title">Receiving and moderation</h1><p className="muted my-4">Demo operations only. Officers see their assigned station; admins have explicit global access. Unassigned reports require an admin.</p>{!profile?.station_id&&profile?.role==="officer"&&<p className="notice">A trusted administrator must assign your demo station.</p>}
+ <form className="panel form-grid my-5"><label>Reference or title<input name="q" defaultValue={filters.q}/></label><label>Workspace<select name="tab" defaultValue={filters.tab??""}><option value="">All assigned reports</option><option value="inventory">Received inventory</option></select></label><label>Status<select name="status" defaultValue={filters.status??""}><option value="">All</option>{["open","pending_surrender","received_by_police","in_custody"].map(s=><option key={s} value={s}>{statusLabel(s)}</option>)}</select></label><button className="button">Filter</button><Link href="/security" className="text-link">Clear</Link></form>
+ {!list.length&&<p className="panel">No station records match.</p>}{list.map(r=><section className="panel my-5" key={r.id}><Link className="text-link text-xl" href={`/items/${r.id}`}>{r.title}</Link><p className="break-all text-sm">Reference: {r.id}</p><p>{statusLabel(r.status)} · Publication {r.publication_status}</p><p>Storage: {r.storage_location||"Not recorded"}</p>
+ {r.publication_status!=="withdrawn"&&<details className="mt-4"><summary className="text-link">Review public publication</summary><WorkflowForm action={operate.bind(null,"moderate_report",r.id)} label="Save moderation decision"><p>Write safe public text. Remove private contacts, precise locations and distinguishing proof clues.</p><label>Public title<input name="safe_title" maxLength={120}/></label><label>Approved description<textarea name="safe_description" maxLength={3000}/></label><label>Approximate area<input name="safe_area" maxLength={300}/></label><label>Decision<select name="decision"><option value="approved">Approve</option><option value="rejected">Reject</option></select></label></WorkflowForm></details>}
+ {r.kind==="found"&&r.status==="pending_surrender"&&r.publication_status!=="withdrawn"&&r.intended_station_id&&<details className="mt-4"><summary className="text-link">Record physical receipt</summary><WorkflowForm action={operate.bind(null,"receive_item",r.id)} label="Confirm receipt"><input type="hidden" name="station" value={r.intended_station_id}/><label>Storage location<input name="storage" required maxLength={200}/></label><label><span><input type="checkbox" name="confirmed" required/> I confirm physical possession at the intended station in this demo.</span></label></WorkflowForm></details>}
+ {["received_by_police","in_custody"].includes(r.status)&&<WorkflowForm action={operate.bind(null,"store_item",r.id)} label="Record in custody"><label>Storage location<input name="storage" defaultValue={r.storage_location??""} required maxLength={200}/></label><p>Release and pickup approval are deferred.</p></WorkflowForm>}
+ <p className="muted mt-3">Private claims: {claims?.filter(c=>c.item_id===r.id).length??0}. Claim decisions are deferred to Iteration 3.</p></section>)}</>;
 }

@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const client = await createClient();
   const { data: { user } } = await client.auth.getUser();
+  const {data:profile}=user?await client.from("profiles").select("role").eq("id",user.id).single():{data:null};
   return (
     <html lang="en">
       <body>
@@ -20,6 +21,8 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-5 py-5">
             <Link href="/" className="text-2xl font-black tracking-tight text-teal-800">FindIT<span className="text-amber-600">.</span></Link>
             <nav aria-label="Main navigation" className="flex flex-wrap items-center gap-4 text-sm font-semibold">
+              <Link href="/items" className="text-link">Browse items</Link><Link href="/stations" className="text-link">Drop-off locations</Link>
+              {profile?.role==="officer"&&<Link href="/security" className="text-link">Station workspace</Link>}{profile?.role==="admin"&&<Link href="/manager" className="text-link">Manager</Link>}
               {user ? <><Link href="/my" className="text-link">My reports</Link><form action={signOut}><button className="text-link">Sign out</button></form></> : <Link href="/auth" className="text-link">Sign in / Register</Link>}
             </nav>
           </div>

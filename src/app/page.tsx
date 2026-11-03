@@ -14,12 +14,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
       <aside className="mt-10 max-w-2xl rounded-2xl border border-amber-200 bg-amber-50 p-6">
         <h2 className="font-bold text-amber-950">A report is the first step</h2>
         <p className="mt-2 leading-relaxed text-amber-950">Hand this item to police. Reporting it does not mean police hold it.</p>
-        <p className="mt-2 text-sm text-amber-900">Found reports begin as Pending Surrender. Receipt and custody must be confirmed separately by an officer.</p>
+        <p className="mt-2 text-sm text-amber-900">Found reports begin as Reported — Not Received. Receipt and custody must be confirmed separately by an officer.</p>
       </aside>
       <section className="mt-10 grid gap-5 sm:grid-cols-3" aria-label="How reporting works">
-        {[["01", "Tell the community", "Sign in and describe what was lost or found."], ["02", "Keep track", "Your reports and their current status stay in My reports."], ["03", "Understand custody", "Police receipt and custody require a separate officer confirmation, planned for a later iteration."]].map(([number, title, text]) => <div className="panel" key={number}><span className="eyebrow">{number}</span><h2 className="mt-3 font-bold">{title}</h2><p className="muted mt-2 text-sm leading-relaxed">{text}</p></div>)}
+        {[["01", "Tell the community", "Sign in and describe what was lost or found."], ["02", "Keep track", "Your reports and their current status stay in My reports."], ["03", "Understand custody", "Police receipt and custody require a separate station officer confirmation."]].map(([number, title, text]) => <div className="panel" key={number}><span className="eyebrow">{number}</span><h2 className="mt-3 font-bold">{title}</h2><p className="muted mt-2 text-sm leading-relaxed">{text}</p></div>)}
       </section>
-      {/* TODO: Map, station directory UI, search/filters, receipt/custody screens, claims, AI matching, nearby alerts and notifications. */}
+      {/* TODO: Claim decisions, controlled release, AI matching, nearby alerts and notifications in later iterations. */}
     </>
   );
 }

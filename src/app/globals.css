@@ -17,6 +17,8 @@ button:disabled { opacity: .6; cursor: wait; }
 .form-grid label { display: grid; gap: .5rem; font-size: .9rem; font-weight: 600; }
 input:not([type=hidden]), textarea { width: 100%; min-width: 0; padding: .8rem; border: 1px solid #aab9c2; border-radius: .5rem; background: #fff; color: #172d39; font-size: 1rem; font-weight: 400; }
 textarea { resize: vertical; }
+select { width:100%; border:1px solid #aab9c2; border-radius:.5rem; padding:.8rem; background:white; font-size:1rem; }
+input[type=checkbox] { width:auto; }
 input[aria-invalid=true], textarea[aria-invalid=true] { border-color: #b91c1c; }
 .error,.notice { border-radius: .7rem; padding: 1rem; font-size: .9rem; line-height: 1.6; }
 .error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }

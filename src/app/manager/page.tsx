@@ -1,7 +1,5 @@
-import { requireRole } from "@/lib/auth";
-
-export default async function ManagerPage() {
-  await requireRole(["admin"]);
-  return <section className="panel"><p className="eyebrow">Admin workspace</p><h1 className="page-title">Manager</h1><p className="muted mt-4">Station and account management are planned for a later iteration.</p></section>;
-  // TODO: Station directory and management UI.
-}
+import Link from "next/link";
+import {requireRole} from "@/lib/auth";
+import WorkflowForm from "@/app/workflow-form";
+import {saveStation} from "./actions";
+export default async function Manager(){const {client}=await requireRole(["admin"]);const {data,error}=await client.from("stations").select("*").order("name");if(error)throw new Error("Unable to load station management");return <><p className="eyebrow">Admin workspace</p><h1 className="page-title">Station management</h1><Link href="/security" className="button my-5">Receiving and moderation</Link><p className="notice">Fictional demo data only. Approval makes a station visible in the demo directory; it does not establish police authorization. New locations without coordinates remain usable in the address list.</p>{[...(data??[]),null].map((s,index)=><section className="panel my-5" key={s?.id??index}><h2 className="font-bold">{s?.name??"Add demo station"}</h2><WorkflowForm action={saveStation.bind(null,s?.id??"")} label="Save station">{[["name","Name"],["address","Address"],["phone","Contact phone"],["service_area","Barangay or city served"],["receiving_hours","Posted receiving hours"],["latitude","Latitude for map update"],["longitude","Longitude for map update"]].map(([key,label])=><label key={key}>{label}<input name={key} defaultValue={s?.[key]??""} maxLength={250}/></label>)}<label><span><input type="checkbox" name="is_approved" defaultChecked={s?.is_approved??false}/> Approved for the demo directory</span></label></WorkflowForm></section>)}</>;}

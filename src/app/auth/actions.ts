@@ -26,7 +26,9 @@ export async function authenticate(form: FormData) {
     const { error } = await client.auth.signInWithPassword({ email, password });
     if (error) return { error: error.code === "email_not_confirmed" ? "Confirm your email before signing in." : "Sign in failed. Check your email and password and try again." };
   }
-  redirect("/my");
+  const {data:{user}}=await client.auth.getUser();
+  const {data:profile}=await client.from("profiles").select("role").eq("id",user?.id??"").single();
+  redirect(profile?.role==="admin"?"/manager":profile?.role==="officer"?"/security":"/my");
 }
 
 export async function signOut() {

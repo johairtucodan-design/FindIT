@@ -1,4 +1,6 @@
 # FindIT
+> Updated 3 November 2026: the revised workbook redefines Iterations 1 and 2 as PB-001 through PB-021. See [revised scope and verification](docs/revised-iterations.md). The historical implementation notes below describe the original build and are superseded where they differ.
+
 
 Police-coordinated community lost-and-found **coursework prototype**. No real police partnership is claimed. All seeded stations, addresses, phone placeholders and coordinates are fictional.
 
