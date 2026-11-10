@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import type { Portal } from "@/lib/staff";
 import { authenticate } from "./actions";
 
@@ -30,6 +31,7 @@ export default function AuthForm({ initialError, portal }: { initialError?: stri
         {message.success && <p className="notice" role="status">{message.success}</p>}
         <button className="button auth-submit" disabled={pending}>{pending ? "Please wait…" : register ? "Create account" : "Sign in"}</button>
       </form>
+      {!register && <Link className="text-link mt-5 inline-block" href="/auth/reset">Need a password link?</Link>}
       {!portal && <button className="text-link mt-6" type="button" disabled={pending} onClick={() => { setRegister(!register); setMessage({}); }}>
           {register ? "Already registered? Sign in" : "New here? Create an account"}
         </button>}

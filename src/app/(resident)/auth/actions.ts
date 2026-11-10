@@ -6,18 +6,23 @@ import { createClient } from "@/lib/supabase/server";
 import { codespacesHost } from "@/lib/codespaces.mjs";
 import { canOpenPortal, portals, type Portal } from "@/lib/staff";
 
+export async function resolveLoginEmail(login: string) {
+  const aliases: Record<string, string | undefined> = {
+    findituser: process.env.FINDIT_DEMO_USER_EMAIL,
+    finditstaff: process.env.FINDIT_DEMO_STAFF_EMAIL,
+    finditadmin: process.env.FINDIT_DEMO_ADMIN_EMAIL,
+  };
+  const value = login.trim().toLowerCase();
+  return Object.hasOwn(aliases, value) ? aliases[value] ?? "" : value;
+}
+
 export async function authenticate(form: FormData) {
   const login = String(form.get("email") ?? "").trim().toLowerCase();
   const password = String(form.get("password") ?? "");
   const mode = form.get("mode");
   const register = mode === "register";
   const portal = mode === "station" || mode === "admin" ? mode : null;
-  const demoEmails: Record<string, string | undefined> = {
-    findituser: process.env.FINDIT_DEMO_USER_EMAIL,
-    finditstaff: process.env.FINDIT_DEMO_STAFF_EMAIL,
-    finditadmin: process.env.FINDIT_DEMO_ADMIN_EMAIL,
-  };
-  const email = !register && Object.hasOwn(demoEmails, login) ? demoEmails[login] ?? "" : login;
+  const email = register ? login : await resolveLoginEmail(login);
   const fullName = String(form.get("full_name") ?? "").trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !password) return { error: "Enter a valid email or demo username and password." };
   if (register && (!fullName || fullName.length > 150 || password.length < 8)) return { error: "Enter your name (up to 150 characters) and a password of at least 8 characters." };
@@ -46,6 +51,16 @@ export async function authenticate(form: FormData) {
     }
   }
   redirect(portal ? portals[portal].home : "/my");
+}
+
+export async function requestPasswordLink(login: string) {
+  const email = await resolveLoginEmail(login);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter a valid email or demo username." };
+  const client = await createClient();
+  const { error } = await client.auth.resetPasswordForEmail(email);
+  if (error?.code === "over_email_send_rate_limit") return { error: "Supabase has reached its email limit. Please wait and try again later." };
+  if (error) return { error: "Could not request a password link. Please try again later." };
+  return { success: "If this account exists, a password link is on its way. Check the inbox and spam folder." };
 }
 
 async function endSession(destination: string) {
