@@ -14,8 +14,8 @@ export default function SetupPasswordPage() {
     const hash = new URLSearchParams(window.location.hash.slice(1));
     const access_token = hash.get("access_token");
     const refresh_token = hash.get("refresh_token");
-    if (hash.get("type") !== "invite" || !access_token || !refresh_token) {
-      setError("Open this page from your latest FindIT invitation email.");
+    if (!["invite", "recovery"].includes(hash.get("type") ?? "") || !access_token || !refresh_token) {
+      setError("Open this page from your latest FindIT password email.");
       return;
     }
     const client = createClient(false);
@@ -41,7 +41,7 @@ export default function SetupPasswordPage() {
     setDone(true);
   }
 
-  return <section className="panel mx-auto max-w-md"><p className="eyebrow">FindIT invitation</p><h1 className="page-title">{done ? "Account ready" : "Choose a password"}</h1>
+  return <section className="panel mx-auto max-w-md"><p className="eyebrow">FindIT account setup</p><h1 className="page-title">{done ? "Account ready" : "Choose a password"}</h1>
     {done ? <div className="mt-5 grid gap-3"><p>You can now sign in using your invited email address and the password you chose.</p><Link className="button" href="/auth">Resident sign in</Link><Link className="text-link" href="/staff">Station sign in</Link><Link className="text-link" href="/admin">Admin sign in</Link></div>
       : <><p className="muted mt-3">Finish setting up your invited account. Use a password that you can share with teammates only if you intend to share this demo login.</p>{error && <p className="error mt-5" role="alert">{error}</p>}{ready && <form className="form-grid mt-6" onSubmit={submit}><label className="auth-field"><span>New password</span><input type="password" name="password" autoComplete="new-password" minLength={8} required/></label><label className="auth-field"><span>Confirm password</span><input type="password" name="confirm" autoComplete="new-password" minLength={8} required/></label><button className="button auth-submit">Set password</button></form>}</>}
   </section>;
