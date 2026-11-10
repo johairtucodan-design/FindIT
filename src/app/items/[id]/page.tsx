@@ -1,18 +1,26 @@
-import Link from "next/link";
+import Link from "@/app/app-link";
 import {notFound} from "next/navigation";
-import {createClient} from "@/lib/supabase/server";
+import {getViewer} from "@/lib/supabase/server";
 import {editable,isUuid,statusLabel,type Report} from "@/lib/reports";
 import WorkflowForm from "@/app/workflow-form";
 import {operate} from "@/app/operations";
 import DemoPhoto from "../demo-photo";
+import ReportKind from "@/app/report-kind";
 export default async function ItemPage({params}:{params:Promise<{id:string}>}) {
- const {id}=await params;if(!isUuid(id))notFound();const client=await createClient();const {data:{user}}=await client.auth.getUser();
- let full:Report|undefined;
- if(user){const {data,error}=await client.rpc("item_detail",{target_id:id});if(error)throw new Error("Report could not be loaded");full=data?.[0];}
- const {data:published}=await client.from("public_items").select("*").eq("id",id).maybeSingle();const report=full??published as Report|undefined;if(!report)notFound();
- let photoUrl:string|undefined;if(full?.photo_path){const {data}=await client.storage.from("item-photos").createSignedUrl(full.photo_path,300);photoUrl=data?.signedUrl;}
- const {data:history}=full?await client.from("report_history").select("id,created_at,actor_id,event_type").eq("item_id",id).order("created_at",{ascending:false}):{data:null};
- const {data:events}=full?await client.from("custody_events").select("id,station_id,actor_id,from_status,to_status,created_at").eq("item_id",id).order("created_at",{ascending:false}):{data:null};
+ const {id}=await params;if(!isUuid(id))notFound();const {client,user}=await getViewer();
+ const [{data:published}, {data:details,error:detailError}]=await Promise.all([
+   client.from("public_items").select("*").eq("id",id).maybeSingle(),
+   user?client.rpc("item_detail",{target_id:id}):{data:null,error:null},
+ ]);
+ if(detailError)throw new Error("Report could not be loaded");
+ const full:Report|undefined=details?.[0];
+ const report=full??published as Report|undefined;if(!report)notFound();
+ const [{data:photo},{data:history},{data:events}]=await Promise.all([
+   full?.photo_path?client.storage.from("item-photos").createSignedUrl(full.photo_path,300):{data:null},
+   full?client.from("report_history").select("id,created_at,actor_id,event_type").eq("item_id",id).order("created_at",{ascending:false}):{data:null},
+   full?client.from("custody_events").select("id,station_id,actor_id,from_status,to_status,created_at").eq("item_id",id).order("created_at",{ascending:false}):{data:null},
+ ]);
+ const photoUrl=photo?.signedUrl;
  const reportTime=Date.parse(report.occurred_at);
  const month=30*86400000;
  const matches=report.kind==="lost"?await client.from("public_items").select("id,title,location_text,occurred_at")
@@ -24,7 +32,7 @@ export default async function ItemPage({params}:{params:Promise<{id:string}>}) {
  const areaMatch=(area:string)=>{const normalized=area.toLowerCase().trim();return Boolean(term&&normalized&&(term.includes(normalized)||normalized.includes(term)));};
  const suggested=(matches?.data??[]).sort((a,b)=>Number(areaMatch(b.location_text))-Number(areaMatch(a.location_text))||distanceFromReport(a.occurred_at)-distanceFromReport(b.occurred_at)).slice(0,5);
  const claimable=published?.kind==="found"&&!(["approved_for_pickup","released","closed"].includes(report.status));
- return <article className="panel mx-auto max-w-3xl"><Link href="/items" className="text-link">Back to listings</Link><p className="eyebrow mt-5">{report.kind} item</p><h1 className="page-title">{report.title}</h1><span className="status my-4">{statusLabel(report.status)}</span><p className="text-sm break-all">Report reference: {id}</p>
+ return <article className="panel mx-auto max-w-3xl"><Link href="/items" className="text-link">Back to listings</Link><div className="mt-5"><ReportKind kind={report.kind}/></div><h1 className="page-title">{report.title}</h1><span className={`status my-4 ${report.status==="pending_surrender"?"pending":""}`}>{statusLabel(report.status)}</span><p className="text-sm break-all">Report reference: {id}</p>
  {report.kind==="found"&&report.status==="pending_surrender"&&<p className="notice mt-4">Reported — Not Received. Reporting does not mean police hold this item.</p>}
  {full&&<p className="muted mt-3">Publication: {full.publication_status}. New reports and edits need staff approval.</p>}
  {photoUrl?<img src={photoUrl} alt={`Photo of ${report.title}`} className="w-full max-h-96 object-contain my-5"/>:published&&<DemoPhoto id={id} credit/>}

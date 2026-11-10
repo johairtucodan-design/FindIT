@@ -1,12 +1,11 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/supabase/server";
 import AuthForm from "./auth-form";
 import { Icon } from "../glyph";
 
 export default async function AuthPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
-  const client = await createClient();
-  const { data: { user } } = await client.auth.getUser();
+  const { user } = await getViewer();
   if (user && error !== "signout") redirect("/my");
   return <div className="auth-shell">
     <aside className="auth-aside">

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "./app-link";
 import { redirect } from "next/navigation";
 import { Icon } from "./glyph";
 

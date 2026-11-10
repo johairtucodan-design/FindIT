@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "../app-link";
 import { authenticate } from "./actions";
 
-export default function AuthForm({ initialError }: { initialError?: string }) {
+export default function AuthForm({ initialError, staff = false }: { initialError?: string; staff?: boolean }) {
   const [register, setRegister] = useState(false);
   const [message, setMessage] = useState<{ error?: string; success?: string }>({ error: initialError });
   const [pending, setPending] = useState(false);
@@ -17,11 +18,11 @@ export default function AuthForm({ initialError }: { initialError?: string }) {
   }
   return (
     <section className="panel mx-auto max-w-md">
-      <p className="eyebrow">Your FindIT account</p>
-      <h1 className="page-title">{register ? "Join the community" : "Welcome back"}</h1>
-      <p className="muted mt-3">Any citizen can report a lost or found item.</p>
+      <p className="eyebrow">{staff ? "Restricted workspace" : "Your FindIT account"}</p>
+      <h1 className="page-title">{staff ? "Staff sign in" : register ? "Join the community" : "Welcome back"}</h1>
+      <p className="muted mt-3">{staff ? "Use your assigned police station or administrator account." : "Any citizen can report a lost or found item."}</p>
       <form onSubmit={submit} className="form-grid mt-7" noValidate>
-        <input type="hidden" name="mode" value={register ? "register" : "login"} />
+        <input type="hidden" name="mode" value={staff ? "staff" : register ? "register" : "login"} />
         {register && <label>Full name<input name="full_name" autoComplete="name" required maxLength={150} /></label>}
         <label>Email<input type="email" name="email" autoComplete="email" required maxLength={254} /></label>
         <label>Password<input type="password" name="password" autoComplete={register ? "new-password" : "current-password"} required minLength={register ? 8 : undefined} /></label>
@@ -30,9 +31,12 @@ export default function AuthForm({ initialError }: { initialError?: string }) {
         {message.success && <p className="notice" role="status">{message.success}</p>}
         <button className="button" disabled={pending}>{pending ? "Please wait…" : register ? "Create account" : "Sign in"}</button>
       </form>
-      <button className="text-link mt-6" type="button" disabled={pending} onClick={() => { setRegister(!register); setMessage({}); }}>
-        {register ? "Already registered? Sign in" : "New here? Create an account"}
-      </button>
+      {staff ? <Link className="text-link mt-6 inline-block" href="/auth">Resident sign in</Link> : <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2">
+        <button className="text-link" type="button" disabled={pending} onClick={() => { setRegister(!register); setMessage({}); }}>
+          {register ? "Already registered? Sign in" : "New here? Create an account"}
+        </button>
+        <Link className="text-link" href="/staff">Staff sign in</Link>
+      </div>}
     </section>
   );
 }

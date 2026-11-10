@@ -55,7 +55,7 @@ Open `/auth` to register or sign in with email/password. New passwords require a
 
 Use `/report/lost` or `/report/found`, then `/my` to open a saved report. Edit links use `/report/lost?edit=<id>` or `/report/found?edit=<id>`. The detail route `/items/[id]` requires the reporter or an officer/admin. Public projections remain available through the safe database view; search/discovery UI is deferred.
 
-The server validates sessions with `getUser()` and reads roles from `profiles`. `/security` permits officers/admins; `/manager` permits admins. Other citizens are redirected to an access-denied page. Both workspaces are placeholders. No service role key is used. All mutations use the user's session plus RLS. Authenticated pages and session-refresh responses are not publicly cached.
+The server validates sessions with `getUser()` and reads roles from `profiles`. Staff sign in at `/staff`; `/security` permits officers/admins and `/manager` permits admins. Citizens cannot open staff workspaces. No service role key is used. All mutations use the user's session plus RLS. Authenticated pages and session-refresh responses are not publicly cached.
 
 Required report fields: title, category, color, description, date and location text. Private identifying details and a photo are optional. Dates cannot be in the future (Singapore calendar date). Validation and upload errors keep the other entered fields and selected file in the form. Network errors are retryable. Session expiry asks the user to sign in in another tab before retrying, preserving the form.
 
