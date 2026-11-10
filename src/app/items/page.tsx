@@ -1,4 +1,3 @@
-import Form from "next/form";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { statusLabel, type Report } from "@/lib/reports";
@@ -6,10 +5,10 @@ import Link from "../app-link";
 import { Icon } from "../glyph";
 import ReportKind from "../report-kind";
 import DemoPhoto from "./demo-photo";
+import ListingFilters, { type Filters } from "./listing-filters";
 
 const statuses = ["open","pending_surrender","received_by_police","in_custody","approved_for_pickup","released","closed"];
 const tabs = [["", "All items"], ["lost", "Lost items"], ["found", "Found items"]] as const;
-type Filters = Record<"q" | "category" | "area" | "status" | "kind", string>;
 
 function listingsUrl(filters: Partial<Filters>) {
   const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
@@ -44,13 +43,7 @@ export default async function Listings({ searchParams }: { searchParams: Promise
   return <>
     <p className="eyebrow">Community discovery</p><h1 className="page-title">Browse lost and found items</h1><p className="muted mt-3">Search public listings approved by station staff.</p>
     <nav className="listing-tabs mt-6" aria-label="Report type">{tabs.map(([kind, label]) => <Link key={kind} className="button secondary" href={listingsUrl({ ...filters, kind })} aria-current={kind === filters.kind ? "page" : undefined}>{label}</Link>)}</nav>
-    <Form action="/items" scroll={false} className="panel form-grid filter-grid my-6" key={listingsUrl(filters)}>
-      {filters.kind && <input type="hidden" name="kind" value={filters.kind}/>}
-      <label>Keyword<input name="q" defaultValue={filters.q} placeholder="e.g. silver keys"/></label><label>Category<input name="category" defaultValue={filters.category}/></label>
-      <label>Approximate area<input name="area" defaultValue={filters.area}/></label>
-      <label>Status<select name="status" defaultValue={filters.status}><option value="">All statuses</option>{statuses.map(s => <option key={s} value={s}>{statusLabel(s)}</option>)}</select></label>
-      <div className="flex flex-wrap items-center gap-3"><button className="button"><Icon name="search" size={16}/> Search</button><Link href={listingsUrl({ kind: filters.kind })} className="text-link">Clear</Link></div>
-    </Form>
+    <ListingFilters filters={filters} filterKey={listingsUrl(filters)} statuses={statuses} clearUrl={listingsUrl({ kind: filters.kind })}/>
     <Suspense key={listingsUrl(filters)} fallback={<p className="panel muted" role="status">Loading listings…</p>}>
       <Results filters={filters}/>
     </Suspense>
