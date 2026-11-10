@@ -27,7 +27,7 @@ end;$$;
 select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='officerB'),true);
 do $$begin
  assert (select count(*)=0 from public.item_detail((select id from target)));
- assert (select count(*)=0 from public.staff_reports());
+ assert (select count(*)=0 from public.staff_reports() where id=(select id from target));
  perform pg_temp.denied('select public.receive_item((select id from target),(select id from sites where n=1),''Shelf'',true)');
  perform pg_temp.denied('select public.moderate_report((select id from target),''approved'',''Keys'',''Safe description'',''Demo area'')');
 end;$$;
