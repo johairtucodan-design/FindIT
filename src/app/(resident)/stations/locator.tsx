@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Icon } from "../glyph";
+import { Icon } from "@/app/glyph";
 import type { Station } from "./directory";
 
 function distance([lat, lng]: readonly [number, number], [otherLat, otherLng]: readonly [number, number]) {

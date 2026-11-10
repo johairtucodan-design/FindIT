@@ -9,6 +9,10 @@ const shapes = {
   arrow: <path d="M4 12h15m-6-6 6 6-6 6"/>,
   key: <><circle cx="8" cy="9" r="4"/><path d="m11 12 8 8 2-2-2-2 1-1-2-2-1 1-4-4"/></>,
   plus: <path d="M12 5v14M5 12h14"/>,
+  list: <path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/>,
+  building: <path d="M3 21h18M5 21V9l7-5 7 5v12M9 12h.01m6 0h.01M9 16h.01m6 0h.01m-3 5v-3"/>,
+  chart: <path d="M4 4v16h16M8 16v-3m4 3V8m4 8v-5"/>,
+  archive: <path d="M4 4h16v4H4zm1 4h14v12H5zm5 4h4"/>,
 } satisfies Record<string,ReactNode>;
 
 export function Icon({name,size=22}: {name:keyof typeof shapes;size?:number}) {

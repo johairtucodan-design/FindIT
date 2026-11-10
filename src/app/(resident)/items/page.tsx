@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { statusLabel, type Report } from "@/lib/reports";
-import Link from "../app-link";
-import { Icon } from "../glyph";
-import ReportKind from "../report-kind";
+import Link from "@/app/app-link";
+import { Icon } from "@/app/glyph";
+import ReportKind from "@/app/report-kind";
 import DemoPhoto from "./demo-photo";
 import ListingFilters, { type Filters } from "./listing-filters";
 

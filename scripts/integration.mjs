@@ -28,11 +28,11 @@ async function action(name, args, values, path = "/auth") {
   return { response, text };
 }
 
-async function login(role) {
+async function login(role, mode = role === "admin" ? "admin" : role === "officer" ? "station" : "login") {
   const user = fixture.users.find(user => user.role === role);
   cookieJar.clear();
-  const result = await action("authenticate", [], { mode: "login", email: user.email, password: fixture.password });
-  const destination=role==="admin"?"/manager":role==="officer"?"/security":"/my";
+  const [path, destination] = mode === "admin" ? ["/admin", "/manager"] : mode === "station" ? ["/staff", "/security"] : ["/auth", "/my"];
+  const result = await action("authenticate", [], { mode, email: user.email, password: fixture.password }, path);
   assert.ok(result.response.headers.get("x-action-redirect")?.startsWith(destination), `Login failed for ${role}`);
   client = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, { auth: { persistSession: false } });
   const { error } = await client.auth.signInWithPassword({ email: user.email, password: fixture.password });
@@ -92,7 +92,8 @@ try {
   assert.equal((await fetch(base + "/security", { headers: { Cookie: cookie() } })).status, 200);
   assert.equal((await client.rpc("item_detail", { target_id: reportIds[0] })).data[0].private_details, fields.private_details);
   assert.equal((await client.storage.from("item-photos").download(photos[0])).error, null);
-  assert.equal((await fetch(base + "/manager", { headers: { Cookie: cookie() }, redirect: "manual" })).status, 307);
+  const deniedAdmin = await fetch(base + "/manager", { headers: { Cookie: cookie() }, redirect: "manual" });
+  assert.equal(deniedAdmin.status, 307); assert.equal(deniedAdmin.headers.get("location"), "/access-denied");
   const found = reportIds[1];
   const operation = (name, target, fields, path) => action("operate", [name, target], fields, path);
   const saved = async (...args) => assert.match((await operation(...args)).text, /Saved/);
@@ -127,6 +128,9 @@ try {
   console.log("PASS report moderation, physical intake, private claim and image, approval, release, and claimant tracking");
   await login("admin");
   assert.equal((await fetch(base + "/manager", { headers: { Cookie: cookie() } })).status, 200);
+  await login("admin", "station");
+  assert.equal((await fetch(base + "/security", { headers: { Cookie: cookie() } })).status, 200);
+  await login("admin", "login");
   console.log("PASS officer/admin server permissions and authorized private reads");
   const logout = await action("signOut", [], {}, "/my"); assert.ok(logout.response.headers.get("x-action-redirect")?.startsWith("/auth"));
   assert.equal((await fetch(base + "/my", { headers: { Cookie: cookie() }, redirect: "manual" })).status, 307);

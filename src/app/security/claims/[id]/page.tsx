@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/app/app-link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { isUuid,statusLabel,type Report } from "@/lib/reports";

@@ -1,5 +1,5 @@
-import Link from "../app-link";
-import ReportKind from "../report-kind";
+import Link from "@/app/app-link";
+import ReportKind from "@/app/report-kind";
 import { requireUser } from "@/lib/auth";
 import { statusLabel, type Report } from "@/lib/reports";
 

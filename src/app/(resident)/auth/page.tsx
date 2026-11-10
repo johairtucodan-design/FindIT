@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getViewer } from "@/lib/supabase/server";
 import AuthForm from "./auth-form";
-import { Icon } from "../glyph";
+import { Icon } from "@/app/glyph";
 
 export default async function AuthPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;

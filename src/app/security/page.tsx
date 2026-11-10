@@ -1,18 +1,26 @@
-import Link from "next/link";
+import Link from "@/app/app-link";
 import {requireRole} from "@/lib/auth";
 import {statusLabel,type Report} from "@/lib/reports";
 import WorkflowForm from "@/app/workflow-form";
 import {operate} from "@/app/operations";
+import ReportKind from "@/app/report-kind";
 export default async function Security({searchParams}:{searchParams:Promise<{q?:string;status?:string;tab?:string}>}){
- const {client,user}=await requireRole(["officer","admin"]);const filters=await searchParams;
+ const {client,profile}=await requireRole(["officer","admin"]);const filters=await searchParams;
  const {data,error}=await client.rpc("staff_reports");if(error)throw new Error("Unable to load station records");
- const {data:profile}=await client.from("profiles").select("station_id,role").eq("id",user.id).single();
  const reports=(data??[]) as Report[];
  const q=typeof filters.q==="string"?filters.q.toLowerCase():"";
  const list=reports.filter(r=>(!q||`${r.id} ${r.title}`.toLowerCase().includes(q))&&(!filters.status||r.status===filters.status)&&(filters.tab!=="inventory"||Boolean(r.held_at_station_id)));
- return <><p className="eyebrow">Station workspace</p><h1 className="page-title">Receiving and moderation</h1><p className="muted my-4">Demo operations only. Officers see their assigned station; admins have explicit global access. Unassigned reports require an admin.</p>{!profile?.station_id&&profile?.role==="officer"&&<p className="notice">A trusted administrator must assign your demo station.</p>}
+ const inventory=filters.tab==="inventory";
+ const metrics=[
+   ["Awaiting receipt",reports.filter(r=>r.status==="pending_surrender").length],
+   ["In custody",reports.filter(r=>["received_by_police","in_custody","approved_for_pickup"].includes(r.status)).length],
+   ["Ready for pickup",reports.filter(r=>r.status==="approved_for_pickup").length],
+ ] as const;
+ return <><div className="workspace-heading"><p className="eyebrow">Simulated handovers</p><h1 className="page-title">{inventory?"Custody inventory":"Receiving queue"}</h1><p className="muted">{inventory?"Review the reports with recorded station custody.":"Review assigned reports, confirm receipt, and manage claims."}</p></div>
+ <dl className="workspace-metrics">{metrics.map(([label,count])=><div className="workspace-metric" key={label}><dt>{label}</dt><dd>{count}</dd></div>)}</dl>
+ {!profile.station_id&&profile.role==="officer"&&<p className="notice">A trusted administrator must assign your demo station.</p>}
  <form className="panel form-grid filter-grid my-5"><label>Reference or title<input name="q" defaultValue={q}/></label><label>Workspace<select name="tab" defaultValue={filters.tab??""}><option value="">All assigned reports</option><option value="inventory">Received inventory</option></select></label><label>Status<select name="status" defaultValue={filters.status??""}><option value="">All</option>{["open","pending_surrender","received_by_police","in_custody","approved_for_pickup","released"].map(s=><option key={s} value={s}>{statusLabel(s)}</option>)}</select></label><div className="flex flex-wrap gap-3 items-center"><button className="button">Filter</button><Link href="/security" className="text-link">Clear</Link></div></form>
- {!list.length&&<p className="panel">No station records match.</p>}{list.map(r=><section className="panel my-5" key={r.id}><Link className="text-link text-xl" href={`/items/${r.id}`}>{r.title}</Link><p className="break-all text-sm">Reference: {r.id}</p><p>{statusLabel(r.status)} · Publication {r.publication_status}</p><p>Storage: {r.storage_location||"Not recorded"}</p>
+ {!list.length&&<p className="panel">No station records match.</p>}{list.map(r=><section className="panel workspace-record my-5" key={r.id}><div className="flex flex-wrap items-center gap-2 mb-3"><ReportKind kind={r.kind}/><span className={`status ${r.status==="pending_surrender"?"pending":""}`}>{statusLabel(r.status)}</span></div><h2><Link className="text-link text-xl" href={`/security/reports/${r.id}`}>{r.title}</Link></h2><p className="break-all text-sm muted">Reference: {r.id}</p><p className="mt-2">Publication: {r.publication_status} · Storage: {r.storage_location||"Not recorded"}</p>
  {r.publication_status!=="withdrawn"&&<details className="mt-4"><summary className="text-link">Review public publication</summary><WorkflowForm action={operate.bind(null,"moderate_report",r.id)} label="Save moderation decision"><p>Write safe public text. Remove private contacts, precise locations and distinguishing proof clues.</p><label>Public title<input name="safe_title" maxLength={120}/></label><label>Approved description<textarea name="safe_description" maxLength={3000}/></label><label>Approximate area<input name="safe_area" maxLength={300}/></label><label>Decision<select name="decision"><option value="approved">Approve</option><option value="rejected">Reject</option></select></label></WorkflowForm></details>}
  {r.kind==="found"&&r.status==="pending_surrender"&&r.publication_status!=="withdrawn"&&r.intended_station_id&&<details className="mt-4"><summary className="text-link">Record physical receipt</summary><WorkflowForm action={operate.bind(null,"receive_item",r.id)} label="Confirm receipt"><input type="hidden" name="station" value={r.intended_station_id}/><label>Storage location<input name="storage" required maxLength={200}/></label><label><span><input type="checkbox" name="confirmed" required/> I confirm physical possession at the intended station in this demo.</span></label></WorkflowForm></details>}
  {["received_by_police","in_custody"].includes(r.status)&&<details className="mt-4"><summary className="text-link">Update storage and custody</summary><WorkflowForm action={operate.bind(null,"store_item",r.id)} label="Record in custody"><label>Storage location<input name="storage" defaultValue={r.storage_location??""} required maxLength={200}/></label></WorkflowForm></details>}

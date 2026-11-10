@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Form from "next/form";
 import { statusLabel } from "@/lib/reports";
-import Link from "../app-link";
-import { Icon } from "../glyph";
+import Link from "@/app/app-link";
+import { Icon } from "@/app/glyph";
 
 export type Filters = Record<"q" | "category" | "area" | "status" | "kind", string>;
 

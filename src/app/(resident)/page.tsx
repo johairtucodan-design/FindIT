@@ -1,6 +1,6 @@
-import Link from "./app-link";
+import Link from "@/app/app-link";
 import { redirect } from "next/navigation";
-import { Icon } from "./glyph";
+import { Icon } from "@/app/glyph";
 
 const paths = [
   { icon: "search", title: "Lost something?", text: "Describe what went missing and where you last saw it.", href: "/report/lost", action: "Report a lost item" },
