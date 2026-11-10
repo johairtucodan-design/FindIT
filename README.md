@@ -25,7 +25,7 @@ Create a Codespace from `main`, configure its ignored `.env.local` with the same
 
 The app derives the exact forwarded hostname from GitHub's `CODESPACE_NAME` and `GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN`. In Codespaces only, Server Actions accept that host and the `localhost:3000` Origin used by its embedded preview. Other origins remain blocked. Development assets allow only that Codespace's exact host. Confirmation links and callback redirects use the public HTTPS hostname.
 
-In Supabase Authentication → URL Configuration, use `https://<your-codespace>-3000.app.github.dev` as Site URL and add the same URL plus `/auth/callback` to Redirect URLs. These must match the current Codespace. Restart/rebuild after pulling configuration changes; reload the browser tab so its Server Action IDs match the current build.
+In Supabase Authentication → URL Configuration, keep the Site URL on the live FindIT deployment. Add the exact current Codespace URL plus `/auth/callback` to Redirect URLs when testing email confirmation there. Restart/rebuild after pulling configuration changes; reload the browser tab so its Server Action IDs match the current build.
 
 ## Database and migrations
 
@@ -55,7 +55,7 @@ Open `/auth` to register or sign in with email/password. New passwords require a
 
 Use `/report/lost` or `/report/found`, then `/my` to open a saved report. Edit links use `/report/lost?edit=<id>` or `/report/found?edit=<id>`. The detail route `/items/[id]` requires the reporter or an officer/admin. Public projections remain available through the safe database view; search/discovery UI is deferred.
 
-The server validates sessions with `getUser()` and reads roles from `profiles`. Resident sign-in at `/auth` leads to `/my`. Station sign-in at `/staff` leads to `/security` for officers and admins. Admin sign-in at `/admin` leads to the admin-only console at `/manager`. The sign-in pages share one Supabase account system. No service role key is used. All mutations use the user's session plus RLS. Authenticated pages and session-refresh responses are not publicly cached.
+The server validates sessions with `getUser()` and reads roles from `profiles`. Resident sign-in at `/auth` leads to `/my`. Station sign-in at `/staff` leads to `/security` for officers and admins. Admin sign-in at `/admin` leads to the admin-only console at `/manager`. The sign-in pages share one Supabase account system. Optional server-only `FINDIT_DEMO_*_EMAIL` variables let demo users enter `findituser`, `finditstaff`, or `finditadmin` instead of an email address; the database role still controls access. Invited users set their own passwords at `/auth/setup`. No service role key is used. All mutations use the user's session plus RLS. Authenticated pages and session-refresh responses are not publicly cached.
 
 Required report fields: title, category, color, description, date and location text. Private identifying details and a photo are optional. Dates cannot be in the future (Singapore calendar date). Validation and upload errors keep the other entered fields and selected file in the form. Network errors are retryable. Session expiry asks the user to sign in in another tab before retrying, preserving the form.
 
