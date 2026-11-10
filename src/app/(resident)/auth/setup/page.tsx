@@ -1,18 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function SetupPasswordPage() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const clientRef = useRef<ReturnType<typeof createClient> | null>(null);
 
   useEffect(() => {
-    createClient().auth.getUser().then(({ data, error }) => {
-      setReady(Boolean(data.user) && !error);
-      if (!data.user || error) setError("This invitation has expired or was already used. Ask for a new invitation.");
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const access_token = hash.get("access_token");
+    const refresh_token = hash.get("refresh_token");
+    if (hash.get("type") !== "invite" || !access_token || !refresh_token) {
+      setError("Open this page from your latest FindIT invitation email.");
+      return;
+    }
+    const client = createClient(false);
+    clientRef.current = client;
+    client.auth.setSession({ access_token, refresh_token }).then(async ({ error }) => {
+      window.history.replaceState(null, "", window.location.pathname);
+      if (error) { setError("This invitation link could not be verified. Request a new one."); return; }
+      const { data, error: userError } = await client.auth.getUser();
+      if (!data.user || userError) { setError("This invitation link could not be verified. Request a new one."); return; }
+      setReady(true);
     });
   }, []);
 
@@ -23,7 +36,7 @@ export default function SetupPasswordPage() {
     if (password.length < 8) { setError("Use a password of at least 8 characters."); return; }
     if (password !== form.get("confirm")) { setError("The passwords do not match."); return; }
     setError("");
-    const { error } = await createClient().auth.updateUser({ password });
+    const { error } = await clientRef.current!.auth.updateUser({ password });
     if (error) { setError("Could not set your password. Please try again."); return; }
     setDone(true);
   }

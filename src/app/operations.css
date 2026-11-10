@@ -1,5 +1,4 @@
 .portal { --rail:#0e2342; --rail-end:#173d61; --rail-text:#b8cce3; --signal:#a5dbff; --primary:#175487; --dark:#103657; --soft:#e8f3fd; --line:#d6e2ef; --ink:#13243c; --muted:#49617b; --canvas:#f1f6fb; color:var(--ink); background:var(--canvas); min-height:100svh; }
-.portal-admin { --rail:#102e2a; --rail-end:#1b5144; --rail-text:#b8d8cb; --signal:#e9ca89; --primary:#17604e; --dark:#103e33; --soft:#e7f3ed; --line:#d7e5dd; --ink:#183329; --muted:#4b655c; --canvas:#f2f7f4; }
 .portal-intro,.workspace-rail { background:linear-gradient(145deg,var(--rail),var(--rail-end)); color:white; }
 .portal-wordmark { display:flex; align-items:center; flex-wrap:wrap; gap:.65rem; width:fit-content; font-size:1.45rem; font-weight:820; letter-spacing:-.045em; }
 .portal-wordmark > span:first-child,.portal-emblem { display:grid; place-items:center; color:var(--signal); border:1px solid color-mix(in srgb,var(--signal) 45%,transparent); background:color-mix(in srgb,var(--signal) 12%,transparent); }
