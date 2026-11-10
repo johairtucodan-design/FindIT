@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { statusLabel, type Report } from "@/lib/reports";
 import { Icon } from "../glyph";
+import DemoPhoto from "./demo-photo";
 const statuses=["open","pending_surrender","received_by_police","in_custody","approved_for_pickup","released","closed"];
 export default async function Listings({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}) {
   const params=await searchParams;
@@ -26,6 +27,7 @@ export default async function Listings({searchParams}:{searchParams:Promise<Reco
   </form>
   {error?<p className="error" role="alert">Listings couldn’t be loaded. <Link className="text-link" href="/items">Try again</Link>.</p>:!data?.length?<section className="panel"><h2 className="font-bold text-xl">No matching listings</h2><p className="muted mt-2">Try a broader area or clear your filters.</p></section>:
   <ul className="listing-grid">{(data as Report[]).map(r=><li key={r.id}><Link className="panel report-card quick-card h-full" href={`/items/${r.id}`}>
+    <DemoPhoto id={r.id}/>
     <div className="flex flex-wrap gap-2 items-center justify-between"><span className="quick-icon"><Icon name={r.kind==="lost"?"search":"box"}/></span><span className={`status ${r.status==="pending_surrender"?"pending":""}`}>{statusLabel(r.status)}</span></div>
     <h2 className="font-bold text-xl">{r.title}</h2><p>{r.category} · {r.location_text} · {r.occurred_at.slice(0,10)}</p><span className="quick-action">View item <Icon name="arrow" size={17}/></span>
   </Link></li>)}</ul>}</>;

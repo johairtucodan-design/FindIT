@@ -5,7 +5,7 @@ import { Icon } from "./glyph";
 const paths = [
   { icon: "search", title: "Lost something?", text: "Describe what went missing and where you last saw it.", href: "/report/lost", action: "Report a lost item" },
   { icon: "box", title: "Found an item?", text: "Create a report and choose an intended drop-off station.", href: "/report/found", action: "Report a found item" },
-  { icon: "pin", title: "Looking for a station?", text: "Compare nearby demo stations, hours, and directions.", href: "/stations", action: "Find a station" },
+  { icon: "pin", title: "Looking for a station?", text: "Look up real Iligan City police stations and view available maps.", href: "/stations", action: "Find a station" },
 ] as const;
 
 export default async function Home({searchParams}: {searchParams: Promise<{code?:string}>}) {
@@ -42,7 +42,7 @@ export default async function Home({searchParams}: {searchParams: Promise<{code?
     </section>
     <aside className="handover-note">
       <span className="quick-icon"><Icon name="shield"/></span>
-      <div><h2>Reporting and custody are separate</h2><p>Found reports start as <strong>Reported — Not Received</strong>. A station officer confirms physical receipt before the status changes. FindIT uses fictional stations for demonstration.</p></div>
+      <div><h2>Reporting and custody are separate</h2><p>Found reports start as <strong>Reported — Not Received</strong>. The station directory is a public reference. Custody and handovers are simulated using fictional stations.</p></div>
     </aside>
   </>;
 }

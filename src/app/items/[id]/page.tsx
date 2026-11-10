@@ -4,6 +4,7 @@ import {createClient} from "@/lib/supabase/server";
 import {editable,isUuid,statusLabel,type Report} from "@/lib/reports";
 import WorkflowForm from "@/app/workflow-form";
 import {operate} from "@/app/operations";
+import DemoPhoto from "../demo-photo";
 export default async function ItemPage({params}:{params:Promise<{id:string}>}) {
  const {id}=await params;if(!isUuid(id))notFound();const client=await createClient();const {data:{user}}=await client.auth.getUser();
  let full:Report|undefined;
@@ -26,7 +27,7 @@ export default async function ItemPage({params}:{params:Promise<{id:string}>}) {
  return <article className="panel mx-auto max-w-3xl"><Link href="/items" className="text-link">Back to listings</Link><p className="eyebrow mt-5">{report.kind} item</p><h1 className="page-title">{report.title}</h1><span className="status my-4">{statusLabel(report.status)}</span><p className="text-sm break-all">Report reference: {id}</p>
  {report.kind==="found"&&report.status==="pending_surrender"&&<p className="notice mt-4">Reported — Not Received. Reporting does not mean police hold this item.</p>}
  {full&&<p className="muted mt-3">Publication: {full.publication_status}. New reports and edits need staff approval.</p>}
- {photoUrl&&<img src={photoUrl} alt={`Photo of ${report.title}`} className="w-full max-h-96 object-contain my-5"/>}
+ {photoUrl?<img src={photoUrl} alt={`Photo of ${report.title}`} className="w-full max-h-96 object-contain my-5"/>:published&&<DemoPhoto id={id} credit/>}
  <dl className="detail-grid my-6">{[["Category",report.category],["Color",report.color],["Date",report.occurred_at.slice(0,10)],["Area",report.location_text]].map(([k,v])=><div key={k}><dt className="muted">{k}</dt><dd>{v}</dd></div>)}</dl><p className="whitespace-pre-wrap break-words">{report.description}</p>
  {full&&<section className="panel my-6"><h2 className="font-bold">Private record</h2><p className="whitespace-pre-wrap break-words">{full.private_details||"No private proof clues"}</p><p className="break-words">Contact: {full.contact_method||"Not provided"}</p><p className="break-words">Intended drop-off: {full.intended_station_id||"Not selected"}</p><p className="break-words">Custody station: {full.held_at_station_id||"Not received"}</p><p className="break-words">Storage: {full.storage_location||"Not recorded"}</p>
  {history&&history.length>0&&<><h3 className="font-bold mt-4 mb-3">Report history</h3><ol className="timeline">{history.map(h=><li key={h.id} className="text-sm"><strong>{h.event_type||"Report updated"}</strong><br/>{new Date(h.created_at).toLocaleString("en-SG",{timeZone:"Asia/Singapore"})} · Actor {h.actor_id||"System"}</li>)}</ol></>}

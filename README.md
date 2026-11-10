@@ -83,4 +83,8 @@ Foundation verification: five application tables with RLS; Storage object RLS; P
 - [x] Invalid file: text, forged PNG and oversized images rejected; form entries retained on validation error.
 - [x] Citizen blocked from `/security` and `/manager`; another citizen cannot edit/read private details or download private photos.
 
-TODO: map, station directory UI, search/filters, police receipt/custody screens, claims UI, AI matching, nearby alerts and notifications.
+## Iligan directory and demo photos
+
+- The public police directory lists sourced locations in Iligan City, separate from the fictional drop-off and custody records in Supabase. A missing pin means the exact location was not verified.
+- Demo listings use credited Wikimedia Commons photos bundled in `public/demo/` as WebP. The credits and licenses appear on the report detail pages. The photos illustrate the items and are not evidence.
+- Citizen uploads and claim evidence still use private Supabase Storage. The demo assets ship with the Vercel deployment and do not use that storage quota.

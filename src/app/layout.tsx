@@ -7,7 +7,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "FindIT | Community lost and found",
-  description: "Find and report lost property, check station drop-off locations, and track ownership claims.",
+  description: "Find and report lost property, look up Iligan City police stations, and track ownership claims.",
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -22,7 +22,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           <div className="site-width header-inner">
             <Link href="/" className="brand"><span><Icon name="mark"/></span>FindIT</Link>
             <nav aria-label="Main navigation" className="site-nav">
-              <Link href="/items">Browse items</Link><Link href="/stations">Drop-off stations</Link>
+              <Link href="/items">Browse items</Link><Link href="/stations">Police stations</Link>
               {profile?.role==="officer"&&<Link href="/security">Station workspace</Link>}{profile?.role==="admin"&&<Link href="/manager">Manager</Link>}
               {user && <><Link href="/my">My reports</Link><Link href="/claims">My claims</Link></>}
             </nav>
@@ -32,7 +32,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <main id="main" className="site-width site-main">{children}</main>
         <footer className="site-width site-footer">
           <Link href="/" className="brand"><span><Icon name="mark" size={18}/></span>FindIT</Link>
-          <p>Community lost &amp; found · Fictional demo stations</p>
+          <p>Community lost &amp; found · Iligan City</p>
         </footer>
       </body>
     </html>
