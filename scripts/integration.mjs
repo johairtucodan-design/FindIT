@@ -6,6 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 
 const fixture = JSON.parse(process.env.E2E_FIXTURE);
+assert.ok(fixture.station_id, "Provide the approved demo station assigned to the officer.");
 const base = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3000";
 const manifest = JSON.parse(await readFile(".next/server/server-reference-manifest.json", "utf8"));
 const actions = Object.fromEntries(Object.entries(manifest.node).map(([id, value]) => [value.exportedName, id]));
@@ -92,6 +93,38 @@ try {
   assert.equal((await client.rpc("item_detail", { target_id: reportIds[0] })).data[0].private_details, fields.private_details);
   assert.equal((await client.storage.from("item-photos").download(photos[0])).error, null);
   assert.equal((await fetch(base + "/manager", { headers: { Cookie: cookie() }, redirect: "manual" })).status, 307);
+  const found = reportIds[1];
+  const operation = (name, target, fields, path) => action("operate", [name, target], fields, path);
+  const saved = async (...args) => assert.match((await operation(...args)).text, /Saved/);
+  await saved("moderate_report", found, { decision:"approved",safe_title:"Demo keys",safe_description:"Keys found",safe_area:"Demo City" }, "/security");
+  await saved("receive_item", found, { station:fixture.station_id,storage:"Demo shelf A",confirmed:"on" }, "/security");
+  await saved("store_item", found, { storage:"Demo shelf B" }, "/security");
+  await login("other");
+  const claimPhoto = await sharp({ create:{width:40,height:40,channels:3,background:"teal"} }).png().toBuffer();
+  await saved("submit_claim", found, { evidence:"Sample mint strap with the tag code DEMO.",attachment:new File([claimPhoto],"proof.png",{type:"image/png"}) }, `/items/${found}`);
+  const claims=await client.from("claims").select("id,evidence_path,status").eq("item_id",found);
+  assert.equal(claims.error,null);
+  assert.equal(claims.data.length,1);
+  const claim=claims.data[0];
+  assert.equal(claim.status,"submitted");
+  assert.ok(claim.evidence_path);
+  const claimantPage=await fetch(base+"/claims",{headers:{Cookie:cookie()}});
+  assert.match(await claimantPage.text(),new RegExp(claim.id));
+  await login("citizen");
+  assert.deepEqual((await client.from("claims").select("id").eq("id",claim.id)).data,[]);
+  assert.ok((await client.storage.from("claim-evidence").download(claim.evidence_path)).error);
+  await login("officer");
+  const reviewPath=`/security/claims/${found}`;
+  const reviewPage=await fetch(base+reviewPath,{headers:{Cookie:cookie()}});
+  assert.match(await reviewPage.text(),/Sample mint strap/);
+  assert.equal((await client.storage.from("claim-evidence").download(claim.evidence_path)).error,null);
+  await saved("review_claim",claim.id,{decision:"approved"},reviewPath);
+  await saved("release_item",found,{confirmed:"on"},reviewPath);
+  assert.match((await operation("release_item",found,{confirmed:"on"},reviewPath)).text,/approved for pickup/);
+  await login("other");
+  const returned=await fetch(base+"/claims",{headers:{Cookie:cookie()}});
+  assert.match(await returned.text(),/physically handed over|has been handed over/);
+  console.log("PASS report moderation, physical intake, private claim and image, approval, release, and claimant tracking");
   await login("admin");
   assert.equal((await fetch(base + "/manager", { headers: { Cookie: cookie() } })).status, 200);
   console.log("PASS officer/admin server permissions and authorized private reads");
@@ -104,5 +137,5 @@ try {
     assert.equal((await client.storage.from("item-photos").remove(photos)).error, null);
     await client.auth.signOut();
   }
-  console.log("Photo fixtures removed. Remove disposable users/reports with the test administrator connection.");
+  console.log("Report photos removed. Remove the disposable claims, evidence, reports, and users using the test administrator connection.");
 }

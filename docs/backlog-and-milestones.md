@@ -6,7 +6,7 @@ This is the engineering handoff from the Find_IT planner. The team's shared work
 
 ## Iterations 1 and 2
 
-[Revised Iterations 1 and 2](revised-iterations.md) maps the current build to PB-001 through PB-021. PB-019 accepts private written proof. Claim evidence file upload is still open. Check [Testing and evidence](testing-and-evidence.md) for the browser tests that remain.
+[Revised Iterations 1 and 2](revised-iterations.md) maps the original build to PB-001 through PB-021. The [Iterations 3–5 handoff](iterations-3-5.md) covers the added claim image upload, the rest of the scheduled implementation, and release verification.
 
 ## Iteration 3 · 9–15 November
 

@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "./auth/actions";
+import { Icon } from "./glyph";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "FindIT | Community lost and found",
-  description: "A coursework prototype for police-coordinated community lost and found.",
+  description: "Find and report lost property, check station drop-off locations, and track ownership claims.",
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -16,20 +17,22 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html lang="en">
       <body>
-        <a href="#main" className="sr-only focus:not-sr-only">Skip to content</a>
-        <header className="border-b border-slate-200 bg-white">
-          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-5 py-5">
-            <Link href="/" className="text-2xl font-black tracking-tight text-teal-800">FindIT<span className="text-amber-600">.</span></Link>
-            <nav aria-label="Main navigation" className="flex flex-wrap items-center gap-4 text-sm font-semibold">
-              <Link href="/items" className="text-link">Browse items</Link><Link href="/stations" className="text-link">Drop-off locations</Link>
-              {profile?.role==="officer"&&<Link href="/security" className="text-link">Station workspace</Link>}{profile?.role==="admin"&&<Link href="/manager" className="text-link">Manager</Link>}
-              {user ? <><Link href="/my" className="text-link">My reports</Link><form action={signOut}><button className="text-link">Sign out</button></form></> : <Link href="/auth" className="text-link">Sign in / Register</Link>}
+        <a href="#main" className="skip-link">Skip to content</a>
+        <header className="site-header">
+          <div className="site-width header-inner">
+            <Link href="/" className="brand"><span><Icon name="mark"/></span>FindIT</Link>
+            <nav aria-label="Main navigation" className="site-nav">
+              <Link href="/items">Browse items</Link><Link href="/stations">Drop-off stations</Link>
+              {profile?.role==="officer"&&<Link href="/security">Station workspace</Link>}{profile?.role==="admin"&&<Link href="/manager">Manager</Link>}
+              {user && <><Link href="/my">My reports</Link><Link href="/claims">My claims</Link></>}
             </nav>
+            {user ? <form action={signOut} className="header-action"><button className="button secondary">Sign out</button></form> : <Link href="/auth" className="button secondary header-action">Sign in <Icon name="arrow" size={16}/></Link>}
           </div>
         </header>
-        <main id="main" className="mx-auto max-w-5xl px-5 py-12 sm:py-20">{children}</main>
-        <footer className="mx-auto max-w-5xl border-t border-slate-200 px-5 py-6 text-sm text-slate-600">
-          Demo stations only. No real police partnership is claimed.
+        <main id="main" className="site-width site-main">{children}</main>
+        <footer className="site-width site-footer">
+          <Link href="/" className="brand"><span><Icon name="mark" size={18}/></span>FindIT</Link>
+          <p>Community lost &amp; found · Fictional demo stations</p>
         </footer>
       </body>
     </html>

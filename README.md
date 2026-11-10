@@ -2,6 +2,8 @@
 
 Working on FindIT with the team? [Start with the Obsidian vault](docs/README.md).
 
+> The [Iterations 3–5 handoff](docs/iterations-3-5.md) covers the claim and release workflow, station dashboard, retention, deployment, and the complete demo. The earlier notes below describe the foundation.
+
 > Updated 3 November 2026: the revised workbook redefines Iterations 1 and 2 as PB-001 through PB-021. See [revised scope and verification](docs/revised-iterations.md). The historical implementation notes below describe the original build and are superseded where they differ.
 
 

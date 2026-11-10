@@ -1,13 +1,32 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { statusLabel, type Report } from "@/lib/reports";
+import { Icon } from "../glyph";
+const statuses=["open","pending_surrender","received_by_police","in_custody","approved_for_pickup","released","closed"];
 export default async function Listings({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}) {
-  const filters=await searchParams; const client=await createClient();
+  const params=await searchParams;
+  const value=(key:string)=>typeof params[key]==="string"?params[key].trim().slice(0,120):"";
+  const filters={q:value("q"),category:value("category"),area:value("area"),status:value("status"),kind:value("kind")};
+  const client=await createClient();
   let query=client.from("public_items").select("*").order("occurred_at",{ascending:false}).limit(100);
-  for(const key of ["category","status","kind"]) if(filters[key]) query=query.eq(key,filters[key]);
-  for(const [key,column] of [["q","title"],["area","location_text"]]) if(filters[key]) query=query.ilike(column,`%${filters[key].replace(/[%_]/g,"")}%`);
+  if(statuses.includes(filters.status)) query=query.eq("status",filters.status);
+  if(["lost","found"].includes(filters.kind)) query=query.eq("kind",filters.kind);
+  for(const [term,column] of [[filters.q,"title"],[filters.area,"location_text"],[filters.category,"category"]]) {
+    const search=term.replace(/[%_\\]/g,"");
+    if(search) query=query.ilike(column,`%${search}%`);
+  }
   const {data,error}=await query;
-  return <><p className="eyebrow">Community discovery</p><h1 className="page-title">Lost and found listings</h1><p className="muted mt-3">Only staff-approved public details appear here. Reported found items may not be in police custody.</p>
-  <form className="panel form-grid my-6"><label>Keyword<input name="q" defaultValue={filters.q}/></label><label>Category<input name="category" defaultValue={filters.category}/></label><label>Approximate area<input name="area" defaultValue={filters.area}/></label><label>Type<select name="kind" defaultValue={filters.kind??""}><option value="">All</option><option>lost</option><option>found</option></select></label><label>Status<select name="status" defaultValue={filters.status??""}><option value="">All</option>{["open","pending_surrender","received_by_police","in_custody","closed"].map(s=><option key={s} value={s}>{statusLabel(s)}</option>)}</select></label><button className="button">Search</button><Link href="/items" className="text-link">Clear filters</Link></form>
-  {error?<p className="error">Listings unavailable. Check that the revised migration has been applied.</p>:!data?.length?<p className="panel">No published reports match these filters.</p>:<ul className="grid gap-4">{(data as Report[]).map(r=><li className="panel" key={r.id}><span className="status">{statusLabel(r.status)}</span><h2 className="mt-3 font-bold text-xl"><Link href={`/items/${r.id}`}>{r.title}</Link></h2><p>{r.category} · {r.location_text} · {r.occurred_at.slice(0,10)}</p></li>)}</ul>}</>;
+  return <><p className="eyebrow">Community discovery</p><h1 className="page-title">Browse lost and found items</h1><p className="muted mt-3">Search public listings approved by station staff.</p>
+  <form className="panel form-grid filter-grid my-6">
+    <label>Keyword<input name="q" defaultValue={filters.q} placeholder="e.g. silver keys"/></label><label>Category<input name="category" defaultValue={filters.category}/></label>
+    <label>Approximate area<input name="area" defaultValue={filters.area}/></label>
+    <label>Type<select name="kind" defaultValue={filters.kind}><option value="">All types</option><option value="lost">Lost</option><option value="found">Found</option></select></label>
+    <label>Status<select name="status" defaultValue={filters.status}><option value="">All statuses</option>{statuses.map(s=><option key={s} value={s}>{statusLabel(s)}</option>)}</select></label>
+    <div className="flex flex-wrap items-center gap-3"><button className="button"><Icon name="search" size={16}/> Search</button><Link href="/items" className="text-link">Clear</Link></div>
+  </form>
+  {error?<p className="error" role="alert">Listings couldn’t be loaded. <Link className="text-link" href="/items">Try again</Link>.</p>:!data?.length?<section className="panel"><h2 className="font-bold text-xl">No matching listings</h2><p className="muted mt-2">Try a broader area or clear your filters.</p></section>:
+  <ul className="listing-grid">{(data as Report[]).map(r=><li key={r.id}><Link className="panel report-card quick-card h-full" href={`/items/${r.id}`}>
+    <div className="flex flex-wrap gap-2 items-center justify-between"><span className="quick-icon"><Icon name={r.kind==="lost"?"search":"box"}/></span><span className={`status ${r.status==="pending_surrender"?"pending":""}`}>{statusLabel(r.status)}</span></div>
+    <h2 className="font-bold text-xl">{r.title}</h2><p>{r.category} · {r.location_text} · {r.occurred_at.slice(0,10)}</p><span className="quick-action">View item <Icon name="arrow" size={17}/></span>
+  </Link></li>)}</ul>}</>;
 }

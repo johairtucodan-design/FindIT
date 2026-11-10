@@ -27,7 +27,7 @@ test("report validation rejects blank required fields, long values and invalid d
 test("photo validation rejects non-images, forged MIME types and oversized files", async () => {
   await assert.rejects(preparePhoto(new File(["text"], "notes.txt", { type: "text/plain" })), /JPEG, PNG or WebP/);
   await assert.rejects(preparePhoto(new File(["not an image"], "fake.png", { type: "image/png" })), /could not be read/);
-  await assert.rejects(preparePhoto(new File([new Uint8Array(5 * 1024 * 1024 + 1)], "big.png", { type: "image/png" })), /5 MiB/);
+  await assert.rejects(preparePhoto(new File([new Uint8Array(4 * 1024 * 1024 + 1)], "big.png", { type: "image/png" })), /4 MiB/);
 });
 
 test("valid images are decoded, resized and re-encoded without original metadata", async () => {

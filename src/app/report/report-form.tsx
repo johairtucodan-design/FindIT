@@ -15,8 +15,8 @@ export default function ReportForm({ kind, report, stations }: { kind: "lost" | 
     const form = new FormData(event.currentTarget);
     setErrors({});
     const photo = form.get("photo");
-    if (photo instanceof File && (photo.size || photo.name) && (photo.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(photo.type))) {
-      setErrors({ photo: "Choose a JPEG, PNG or WebP image, 5 MiB or smaller." });
+    if (photo instanceof File && (photo.size || photo.name) && (photo.size > 4 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(photo.type))) {
+      setErrors({ photo: "Choose a JPEG, PNG or WebP image, 4 MiB or smaller." });
       return;
     }
     setPending(true);
@@ -44,7 +44,7 @@ export default function ReportForm({ kind, report, stations }: { kind: "lost" | 
         <label htmlFor="occurred_at">Date {kind === "lost" ? "lost" : "found"} *<input id="occurred_at" name="occurred_at" type="date" required defaultValue={report?.occurred_at.slice(0, 10) ?? ""} aria-invalid={Boolean(errors.occurred_at)} aria-describedby={errors.occurred_at ? "occurred_at-error" : undefined} />{errors.occurred_at && <span id="occurred_at-error" className="field-error">{errors.occurred_at}</span>}</label>
         <label htmlFor="private_details">Private details <span className="muted font-normal">(optional)</span><textarea id="private_details" name="private_details" maxLength={3000} rows={3} defaultValue={report?.private_details ?? ""} aria-describedby="private-help" /><span id="private-help" className="muted text-sm font-normal">Only you, officers and admins can read this. Do not add passwords or sensitive identity documents.</span></label>
         <label>Intended drop-off<select name="intended_station_id" defaultValue={report?.intended_station_id??""}><option value="">Not selected — reviewed by admin</option>{stations.map(s=><option value={s.id} key={s.id}>{s.name}</option>)}</select><span className="muted">Optional; does not confirm receipt. Only demo stations are seeded.</span></label>
-        <label htmlFor="photo">{report?.photo_path ? "Replace photo" : "Photo"} <span className="muted font-normal">(optional)</span><input id="photo" type="file" name="photo" accept="image/jpeg,image/png,image/webp" onChange={e=>{const f=e.target.files?.[0];setPhoto(f&&["image/jpeg","image/png","image/webp"].includes(f.type)&&f.size<=5*1024*1024?f:null);}} aria-invalid={Boolean(errors.photo)} aria-describedby="photo-help" /><span id="photo-help" className={errors.photo ? "field-error" : "muted text-sm font-normal"}>{errors.photo ?? "JPEG, PNG or WebP. Maximum 5 MiB and 25 megapixels. Existing photo stays if no replacement is selected."}</span></label>
+        <label htmlFor="photo">{report?.photo_path ? "Replace photo" : "Photo"} <span className="muted font-normal">(optional)</span><input id="photo" type="file" name="photo" accept="image/jpeg,image/png,image/webp" onChange={e=>{const f=e.target.files?.[0];setPhoto(f&&["image/jpeg","image/png","image/webp"].includes(f.type)&&f.size<=4*1024*1024?f:null);}} aria-invalid={Boolean(errors.photo)} aria-describedby="photo-help" /><span id="photo-help" className={errors.photo ? "field-error" : "muted text-sm font-normal"}>{errors.photo ?? "JPEG, PNG or WebP. Maximum 4 MiB and 25 megapixels. Existing photo stays if no replacement is selected."}</span></label>
         {preview&&<img src={preview} alt="Selected report photo preview" className="max-h-60 rounded-xl object-contain"/>}
         <div className="flex flex-wrap items-center gap-4"><button className="button" disabled={pending}>{pending ? "Saving…" : report ? "Save changes" : "Submit report"}</button><Link className="text-link" href={report ? `/items/${report.id}` : "/my"}>Cancel</Link></div>
       </form>

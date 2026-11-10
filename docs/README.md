@@ -12,6 +12,7 @@ FindIT is a demo of community lost-and-found reporting, station intake, and owne
 | --- | --- |
 | [Setup and team workflow](setup-and-workflow.md) | Local setup, Codespaces, Vercel, access, and pull requests |
 | [Revised Iterations 1 and 2](revised-iterations.md) | Implemented scope, permissions, test results, and the demo checklist |
+| [Iterations 3–5 handoff](iterations-3-5.md) | Claim and release workflow, station operations, release steps, and presentation demo |
 | [Backlog and milestones](backlog-and-milestones.md) | Open work, acceptance checks, dependencies, and sprint dates |
 | [Testing and evidence](testing-and-evidence.md) | Commands, pending checks, and what to attach to a pull request |
 | [Implemented features PDF](reference/FindIT_Implemented_Features.pdf) | Two-page summary of the Iterations 1 and 2 build |
