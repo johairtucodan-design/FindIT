@@ -2,10 +2,12 @@ import Link from "@/app/app-link";
 import { Icon } from "@/app/glyph";
 import { getViewer } from "@/lib/supabase/server";
 import { signOut } from "./auth/actions";
+import InviteRedirect from "./auth/invite-redirect";
 
 export default async function ResidentLayout({ children }: { children: React.ReactNode }) {
   const { user } = await getViewer();
   return <>
+    <InviteRedirect/>
     <header className="site-header">
       <div className="site-width header-inner">
         <Link href="/" className="brand"><span><Icon name="mark"/></span>FindIT</Link>
