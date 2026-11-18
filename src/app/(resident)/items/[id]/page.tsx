@@ -1,55 +1,77 @@
 import Link from "@/app/app-link";
-import {notFound} from "next/navigation";
-import {getViewer} from "@/lib/supabase/server";
-import {editable,isUuid,statusLabel,type Report} from "@/lib/reports";
-import {eligibleFoundStatuses,matchWindowMs,rankItemMatches,type MatchFields} from "@/lib/item-matches";
+import { notFound } from "next/navigation";
+import { getViewer } from "@/lib/supabase/server";
+import { editable, isUuid, statusLabel, type Report } from "@/lib/reports";
+import { eligibleFoundStatuses, matchWindowMs, rankItemMatches, type MatchFields } from "@/lib/item-matches";
 import WorkflowForm from "@/app/workflow-form";
-import {operate} from "@/app/operations";
+import { operate } from "@/app/operations";
 import DemoPhoto from "../demo-photo";
 import ReportKind from "@/app/report-kind";
-export default async function ItemPage({params}:{params:Promise<{id:string}>}) {
- const {id}=await params;if(!isUuid(id))notFound();const {client,user}=await getViewer();
- const [{data:published}, {data:details,error:detailError}]=await Promise.all([
-   client.from("public_items").select("*").eq("id",id).maybeSingle(),
-   user?client.rpc("item_detail",{target_id:id}):{data:null,error:null},
- ]);
- if(detailError)throw new Error("Report could not be loaded");
- const full:Report|undefined=details?.[0];
- const report=full??published as Report|undefined;if(!report)notFound();
- const [{data:photo},{data:history},{data:events}]=await Promise.all([
-   full?.photo_path?client.storage.from("item-photos").createSignedUrl(full.photo_path,300):{data:null},
-   full?client.from("report_history").select("id,created_at,actor_id,event_type").eq("item_id",id).order("created_at",{ascending:false}):{data:null},
-   full?client.from("custody_events").select("id,station_id,actor_id,from_status,to_status,created_at").eq("item_id",id).order("created_at",{ascending:false}):{data:null},
- ]);
- const photoUrl=photo?.signedUrl;
- const matchReport=published?.kind==="lost"?published:full?.kind==="lost"?full:undefined;
- const eligibleLost=matchReport?.kind==="lost"&&matchReport.status==="open";
- const reportTime=Date.parse(matchReport?.occurred_at??"");
- const matches=eligibleLost?await client.from("public_items").select("id,kind,status,title,description,category,color,location_text,occurred_at")
-   .eq("kind","found").in("status",[...eligibleFoundStatuses])
-   .gte("occurred_at",new Date(reportTime-matchWindowMs).toISOString()).lte("occurred_at",new Date(reportTime+matchWindowMs).toISOString())
-   .order("occurred_at",{ascending:false}).order("id").limit(100):null;
- const suggested=eligibleLost?rankItemMatches(matchReport as MatchFields,matches?.data??[]):[];
- const claimable=published?.kind==="found"&&!(["approved_for_pickup","released","closed"].includes(report.status));
- return <article className="panel mx-auto max-w-3xl"><Link href="/items" className="text-link">Back to listings</Link><div className="mt-5"><ReportKind kind={report.kind}/></div><h1 className="page-title">{report.title}</h1><span className={`status my-4 ${report.status==="pending_surrender"?"pending":""}`}>{statusLabel(report.status)}</span><p className="text-sm break-all">Report reference: {id}</p>
- {report.kind==="found"&&report.status==="pending_surrender"&&<p className="notice mt-4">Reported — Not Received. Reporting does not mean police hold this item.</p>}
- {full&&<p className="muted mt-3">Publication: {full.publication_status}. New reports and edits need staff approval.</p>}
- {photoUrl?<img src={photoUrl} alt={`Photo of ${report.title}`} className="w-full max-h-96 object-contain my-5"/>:published&&<DemoPhoto id={id} credit/>}
- <dl className="detail-grid my-6">{[["Category",report.category],["Color",report.color],["Date",report.occurred_at.slice(0,10)],["Area",report.location_text]].map(([k,v])=><div key={k}><dt className="muted">{k}</dt><dd>{v}</dd></div>)}</dl><p className="whitespace-pre-wrap break-words">{report.description}</p>
- {full&&<section className="panel my-6"><h2 className="font-bold">Private record</h2><p className="whitespace-pre-wrap break-words">{full.private_details||"No private proof clues"}</p><p className="break-words">Contact: {full.contact_method||"Not provided"}</p><p className="break-words">Intended drop-off: {full.intended_station_id||"Not selected"}</p><p className="break-words">Custody station: {full.held_at_station_id||"Not received"}</p><p className="break-words">Storage: {full.storage_location||"Not recorded"}</p>
- {history&&history.length>0&&<><h3 className="font-bold mt-4 mb-3">Report history</h3><ol className="timeline">{history.map(h=><li key={h.id} className="text-sm"><strong>{h.event_type||"Report updated"}</strong><br/>{new Date(h.created_at).toLocaleString("en-SG",{timeZone:"Asia/Singapore"})} · Actor {h.actor_id||"System"}</li>)}</ol></>}
- </section>}
- {full&&full.reporter_id===user?.id&&<>{editable(full.status)&&full.publication_status!=="withdrawn"&&<Link className="button" href={`/report/${report.kind}?edit=${id}`}>Edit report</Link>}{full.publication_status!=="withdrawn"&&<WorkflowForm action={operate.bind(null,"withdraw_report",id)} label="Withdraw from public listings"><p>Withdrawal hides this report, retaining custody and edit history.</p></WorkflowForm>}</>}
- {claimable&&user&&full?.reporter_id!==user.id&&<section className="mt-7"><h2 className="font-bold text-xl">Submit a private ownership claim</h2><WorkflowForm action={operate.bind(null,"submit_claim",id)} label="Submit claim"><label>Ownership evidence<textarea name="evidence" required minLength={10} maxLength={3000} rows={4}/></label><label>Evidence image (optional)<input name="attachment" type="file" accept="image/jpeg,image/png,image/webp"/><span className="muted font-normal">JPEG, PNG or WebP, up to 4 MiB.</span></label><p className="muted">Describe a detail that identifies your property. Keep passwords and full identity documents private.</p></WorkflowForm><Link className="text-link" href="/claims">Track my claims</Link></section>}
- {events&&events.length>0&&<section className="mt-6"><h2 className="font-bold mb-3">Custody history</h2><ol className="timeline">{events.map(e=><li key={e.id} className="text-sm"><strong>{statusLabel(e.from_status)} → {statusLabel(e.to_status)}</strong><br/>{new Date(e.created_at).toLocaleString("en-SG",{timeZone:"Asia/Singapore"})} · Event {e.id} · Actor {e.actor_id} · Station {e.station_id}</li>)}</ol></section>}
- {!user&&claimable&&<Link className="button mt-5" href="/auth">Sign in to submit a private claim</Link>}
- {report.kind==="lost"&&<section className="matches-section mt-8"><div className="matches-heading"><span className="matches-icon" aria-hidden="true">⌕</span><div><p className="eyebrow">Rule-based suggestions</p><h2>Possible matches</h2><p>Suggestions are not proof of ownership or police custody.</p></div></div>
- {!eligibleLost?<p className="muted mt-4">Suggestions are available while this report is open.</p>:<><p className="muted mt-3">We compare this report with already public found reports using category (25%), details (30%), color (15%), date (15%), and approximate area (15%). Missing details are reweighted. {full?.publication_status!=="approved"&&full?.reporter_id===user?.id?"You can see suggestions while your report is still private; only you and assigned staff can view this page.":""}</p>{matches?.error?<p className="muted mt-3">Suggestions couldn’t be loaded. <Link className="text-link" href="/items?kind=found">Browse found items</Link>.</p>:suggested.length?<ol className="match-list mt-5">{suggested.map(({candidate:item,score,reasons,breakdown,notEnoughDetails})=><li key={item.id} className="match-card">
-   <div className="match-card-top"><div><p className="match-overline">FOUND REPORT</p><Link className="match-title" href={`/items/${item.id}`}>{item.title}</Link><p className="muted mt-2 text-sm">{item.occurred_at?.slice(0,10)} · {statusLabel(item.status)}</p></div><div className="match-score"><strong>{notEnoughDetails?"—":score}</strong><span>{notEnoughDetails?"Need more details":"/ 100"}</span></div></div>
-   {item.status==="pending_surrender"&&<p className="notice mt-4 text-sm">Reported — Not Received. Reporting does not prove police hold it.</p>}
-   <div className="match-reasons">{reasons.map(reason=><span key={reason}>{reason}</span>)}</div>
-   <details className="match-details"><summary>See match details</summary><div className="match-detail-body"><div className="match-attributes"><span>Category: {item.category||"Not listed"}</span><span>Color: {item.color||"Not listed"}</span><span>Date: {item.occurred_at?.slice(0,10)||"Not listed"}</span></div><p className="match-public-copy">{item.description||"No public description provided."}</p><dl className="match-breakdown">{breakdown.map(signal=><div key={signal.key}><dt>{signal.label} <span>{signal.weight}% base weight</span></dt><dd>{signal.similarity===null?signal.reason:<>{signal.reason} · {signal.similarity}% similarity{signal.contribution===null?" · No score until enough details are available":` · ${signal.contribution} score points`}</>}</dd></div>)}</dl><p className="muted text-xs">Available signals are reweighted to make the score. Approximate location is compared privately and never shown here.</p></div></details>
- </li>)}</ol>:<p className="match-empty mt-4">No public found reports are ready to compare yet. Check again as listings are approved.</p>}</>}
- </section>}
- </article>;
+import MatchScore from "./match-score";
+
+export default async function ItemPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  if (!isUuid(id)) notFound();
+  const { client, user } = await getViewer();
+  const [{ data: published }, { data: details, error: detailError }] = await Promise.all([
+    client.from("public_items").select("*").eq("id", id).maybeSingle(),
+    user ? client.rpc("item_detail", { target_id: id }) : { data: null, error: null },
+  ]);
+  if (detailError) throw new Error("Report could not be loaded");
+  const full: Report | undefined = details?.[0], report = full ?? published as Report | undefined;
+  if (!report) notFound();
+
+  const [{ data: photo }, { data: history }, { data: events }] = await Promise.all([
+    full?.photo_path ? client.storage.from("item-photos").createSignedUrl(full.photo_path, 300) : { data: null },
+    full ? client.from("report_history").select("id,created_at,actor_id,event_type").eq("item_id", id).order("created_at", { ascending: false }) : { data: null },
+    full ? client.from("custody_events").select("id,station_id,actor_id,from_status,to_status,created_at").eq("item_id", id).order("created_at", { ascending: false }) : { data: null },
+  ]);
+  const photoUrl = photo?.signedUrl, matchReport = published?.kind === "lost" ? published : full?.kind === "lost" ? full : undefined;
+  const eligibleLost = matchReport?.kind === "lost" && matchReport.status === "open", reportTime = Date.parse(matchReport?.occurred_at ?? "");
+  const matches = eligibleLost ? await client.from("public_items").select("id,kind,status,title,description,category,color,location_text,occurred_at")
+    .eq("kind", "found").in("status", [...eligibleFoundStatuses])
+    .gte("occurred_at", new Date(reportTime - matchWindowMs).toISOString()).lte("occurred_at", new Date(reportTime + matchWindowMs).toISOString())
+    .order("occurred_at", { ascending: false }).order("id").limit(100) : null;
+  const suggested = eligibleLost ? rankItemMatches(matchReport as MatchFields, matches?.data ?? []) : [];
+  const claimable = published?.kind === "found" && !( ["approved_for_pickup", "released", "closed"].includes(report.status));
+  const isOwner = Boolean(full && user && full.reporter_id === user.id);
+
+  return <article className="item-detail-page">
+    <nav className="detail-breadcrumb" aria-label="Breadcrumb"><Link href="/items" className="text-link">All reports</Link><span aria-hidden="true">/</span><span>{report.kind} item</span></nav>
+    <header className="detail-heading">
+      <div className="detail-heading-copy"><div className="detail-badges"><ReportKind kind={report.kind}/><span className={`status ${report.status === "pending_surrender" ? "pending" : ""}`}>{statusLabel(report.status)}</span></div><h1 className="page-title">{report.title}</h1><p className="detail-reference">Report reference <span>{id}</span></p></div>
+      {isOwner && editable(full!.status) && full!.publication_status !== "withdrawn" && <Link className="button secondary" href={`/report/${report.kind}?edit=${id}`}>Edit report</Link>}
+    </header>
+
+    {report.kind === "found" && report.status === "pending_surrender" && <aside className="detail-custody-note"><span aria-hidden="true">!</span><p><strong>Reported — Not Received</strong><br/>This found report does not mean police hold the item.</p></aside>}
+    {full && <p className="detail-publication-note">Publication: {full.publication_status}. New reports and edits need staff approval.</p>}
+
+    <div className="item-detail-grid">
+      <div className="item-detail-main">
+        <div className="detail-photo">{photoUrl ? <img src={photoUrl} alt={`Photo of ${report.title}`}/> : published ? <DemoPhoto id={id} credit emptyState/> : <div className="detail-photo-empty"><span aria-hidden="true">⌕</span><strong>No photo added</strong><p>A clear image can make an item easier to recognize.</p></div>}</div>
+        <section className="detail-description"><p className="eyebrow">Report details</p><h2>About this item</h2><p>{report.description}</p></section>
+      </div>
+      <aside className="item-summary" aria-label="Report summary"><div className="summary-heading"><span className="eyebrow">At a glance</span><span className={`kind-badge ${report.kind}`}>{report.kind === "lost" ? "LOST ITEM" : "FOUND ITEM"}</span></div><dl className="detail-grid"><div><dt>Category</dt><dd>{report.category}</dd></div><div><dt>Color</dt><dd>{report.color}</dd></div><div><dt>Date {report.kind === "lost" ? "lost" : "found"}</dt><dd>{report.occurred_at.slice(0, 10)}</dd></div><div><dt>Approximate area</dt><dd>{report.location_text}</dd></div></dl><p className="summary-footnote">Area details are approximate. FindIT does not publish exact coordinates.</p></aside>
+    </div>
+
+    {isOwner && full!.publication_status !== "withdrawn" && <div className="detail-owner-actions"><span>Manage your report</span><WorkflowForm action={operate.bind(null, "withdraw_report", id)} label="Withdraw report"><p>Withdrawal hides this report from public listings while retaining its record history.</p></WorkflowForm></div>}
+
+    {full && <section className="private-record panel"><div className="section-title"><p className="eyebrow">Authorized view</p><h2>Private report record</h2><p>Visible only to you and authorized station staff.</p></div><dl className="detail-grid"><div><dt>Private identifying details</dt><dd>{full.private_details || "No private proof clues"}</dd></div><div><dt>Account contact</dt><dd>{full.contact_method || "Not provided"}</dd></div><div><dt>Intended station</dt><dd>{full.intended_station_id || "Not selected"}</dd></div><div><dt>Custody station</dt><dd>{full.held_at_station_id || "Not received"}</dd></div><div><dt>Storage location</dt><dd>{full.storage_location || "Not recorded"}</dd></div></dl>
+      {history?.length ? <><h3>Report activity</h3><ol className="timeline">{history.map(entry => <li key={entry.id} className="text-sm"><strong>{entry.event_type || "Report updated"}</strong><br/>{new Date(entry.created_at).toLocaleString("en-SG", { timeZone: "Asia/Singapore" })} · Actor {entry.actor_id || "System"}</li>)}</ol></> : null}
+    </section>}
+
+    {claimable && user && full?.reporter_id !== user.id && <section className="detail-workflow"><div className="section-title"><p className="eyebrow">Private workflow</p><h2>Submit an ownership claim</h2><p>Describe a detail that identifies your property. Keep passwords and full identity documents private.</p></div><WorkflowForm action={operate.bind(null, "submit_claim", id)} label="Submit claim"><label>Ownership evidence<textarea name="evidence" required minLength={10} maxLength={3000} rows={4}/></label><label>Evidence image (optional)<input name="attachment" type="file" accept="image/jpeg,image/png,image/webp"/><span className="muted font-normal">JPEG, PNG or WebP, up to 4 MiB.</span></label></WorkflowForm><Link className="text-link" href="/claims">Track my claims</Link></section>}
+    {events?.length ? <section className="detail-workflow"><div className="section-title"><p className="eyebrow">Authorized activity</p><h2>Custody history</h2></div><ol className="timeline">{events.map(event => <li key={event.id} className="text-sm"><strong>{statusLabel(event.from_status)} → {statusLabel(event.to_status)}</strong><br/>{new Date(event.created_at).toLocaleString("en-SG", { timeZone: "Asia/Singapore" })} · Event {event.id} · Actor {event.actor_id} · Station {event.station_id}</li>)}</ol></section> : null}
+    {!user && claimable && <Link className="button mt-5" href="/auth">Sign in to submit a private claim</Link>}
+
+    {report.kind === "lost" && <section className="matches-section detail-matches"><div className="matches-heading"><span className="matches-icon" aria-hidden="true">⌕</span><div><p className="eyebrow">Deterministic suggestions</p><h2>Possible matches</h2><p>Similarity scores are suggestions, not probabilities, proof of ownership, or police custody.</p></div></div>
+      {!eligibleLost ? <p className="muted mt-4">Suggestions are available while this report is open.</p> : <><p className="muted mt-3">We compare public found reports by category (25%), details (30%), color (15%), date (15%), and approximate area (15%). Missing signals are reweighted. {full?.publication_status !== "approved" && isOwner ? "These suggestions are private to you and authorized station staff while your report awaits approval." : ""}</p>
+        {matches?.error ? <p className="muted mt-3">Suggestions couldn’t be loaded. <Link className="text-link" href="/items?kind=found">Browse found items</Link>.</p> : suggested.length ? <ol className="match-list mt-5">{suggested.map(({ candidate: item, score, reasons, breakdown, notEnoughDetails }) => <li key={item.id} className="match-card">
+          <div className="match-card-top"><div><p className="match-overline">FOUND REPORT</p><Link className="match-title" href={`/items/${item.id}`}>{item.title}</Link><p className="muted mt-2 text-sm">{item.occurred_at?.slice(0, 10)} · {statusLabel(item.status)}</p></div><MatchScore score={notEnoughDetails ? null : score}/></div>
+          {item.status === "pending_surrender" && <p className="notice mt-4 text-sm">Reported — Not Received. Reporting does not mean police hold this item.</p>}
+          <div className="match-reasons">{reasons.map(reason => <span key={reason}>{reason}</span>)}</div>
+          <details className="match-details"><summary>View score breakdown</summary><div className="match-detail-body"><div className="match-attributes"><span>Category: {item.category || "Not listed"}</span><span>Color: {item.color || "Not listed"}</span><span>Date: {item.occurred_at?.slice(0, 10) || "Not listed"}</span></div><p className="match-public-copy">{item.description || "No public description provided."}</p><dl className="match-breakdown">{breakdown.map(signal => <div key={signal.key}><dt>{signal.label} <span>{signal.weight}% base weight</span></dt><dd>{signal.similarity === null ? signal.reason : <>{signal.reason} · {signal.similarity}% similarity{signal.contribution === null ? " · No score until enough details are available" : ` · ${signal.contribution} score points`}</>}</dd></div>)}</dl><p className="muted text-xs">Available signals are reweighted. Approximate location is compared privately and never shown here.</p></div></details>
+        </li>)}</ol> : <p className="match-empty mt-4">No public found reports are ready to compare yet. Check again as listings are approved.</p>}</>}
+    </section>}
+  </article>;
 }

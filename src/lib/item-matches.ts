@@ -1,3 +1,5 @@
+import { colorSimilarity } from "./colors.ts";
+
 export const matchWeights = { category: 25, details: 30, color: 15, date: 15, area: 15 } as const;
 export const matchWindowMs = 30 * 86_400_000;
 export const eligibleFoundStatuses = ["pending_surrender", "received_by_police", "in_custody"] as const;
@@ -82,7 +84,7 @@ export function rankItemMatches<T extends MatchFields>(lost: MatchFields, candid
 
     const colorA = known(lost.color), colorB = known(candidate.color);
     if (colorA && colorB) {
-      const similarity = colorA === colorB ? 1 : dice(tokens(colorA), tokens(colorB));
+      const similarity = colorSimilarity(lost.color!, candidate.color!, (a, b) => dice(tokens(a), tokens(b)));
       signals.push({ key: "color", weight: matchWeights.color, similarity, reason: similarity === 1 ? "Same color" : similarity >= 0.5 ? "Similar color" : "Different color" });
     }
 

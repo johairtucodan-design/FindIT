@@ -16,12 +16,16 @@ FindIT compares an open lost report with public, approved found reports. A repor
 | --- | ---: | --- |
 | Category | 25 | Normalized exact category agreement (otherwise zero). |
 | Title and description | 30 | Dice overlap of normalized tokens after case/diacritic/punctuation normalization and common-word removal. |
-| Color | 15 | Exact normalized color or token overlap for compound colors. |
+| Color | 15 | Common legacy names map to the report form's HEX palette, then HEX colors are compared by CIE76 Lab distance. Distance is converted to a 0–1 similarity over a 100-point range. Unmapped legacy and compound names keep normalized exact/token-overlap comparison. |
 | Date | 15 | Starts at full weight on the same date and decreases linearly to zero at 30 days. |
 | Approximate area | 15 | Dice overlap of public, moderated area tokens. |
 
 For each pair, the final score is the weighted mean of available signals, scaled to 0–100. A signal is available only when both reports provide a usable value. The matcher requires at least three available signals; otherwise it displays **Not enough details to compare** without a score. Category disagreement reduces the score but does not hard-filter a candidate. Results sort by score, date gap, then stable report ID.
 
 Plain-language reasons name the observed signals, such as **Same category**, **Similar description**, **Same color**, **Reported nearby**, or **Reported 2 days apart**. Each suggestion expands to show signal strength, base weight, and its normalized points toward the score; unavailable signals show why they were omitted. Missing fields are not treated as disagreement. Coordinates and private fields are excluded from the returned result shape.
+
+New report color selections are saved as validated `#RRGGBB` strings; **Not sure** remains an unavailable-signal value. Existing named colors are preserved when a report is edited without changing its color. The same standard palette names (including Black, Silver, Red, Green, and Blue) map to their defined HEX swatches, so old named reports compare directly with new HEX reports. For two recognized HEX colors, CIE76 Lab distance yields `max(0, 1 - distance / 100)`; exact colors score 100%, nearer colors score higher, and far-apart colors can score 0%. Other legacy values retain the prior text-token fallback.
+
+The detail page presents a similarity score as an animated progress bar with the exact value available to assistive technology. It is not a probability or confirmation. The number and bar animate only when motion is allowed and the bar enters view; reduced-motion preferences show the final value immediately. Pairs without enough signals show no score.
 
 All unit fixtures use synthetic report IDs and sample items. No invented reports are inserted into the live project.

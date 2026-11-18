@@ -38,6 +38,21 @@ test("uses weighted, explainable signals and normalizes text", () => {
   assert.equal(match.breakdown.reduce((sum, signal) => sum + signal.contribution, 0), 100);
 });
 
+test("scores exact, perceptually similar, and different HEX colors", () => {
+  const exact = rankItemMatches(lost, [found({ color: "#17191c" })])[0].breakdown.find(signal => signal.key === "color");
+  const similar = rankItemMatches(lost, [found({ color: "#8B5E3C" })])[0].breakdown.find(signal => signal.key === "color");
+  const different = rankItemMatches({ ...lost, color: "#E53935" }, [found({ color: "#2563EB" })])[0].breakdown.find(signal => signal.key === "color");
+  assert.equal(exact.similarity, 100);
+  assert.ok(similar.similarity > 0 && similar.similarity < 100);
+  assert.equal(different.similarity, 0);
+});
+
+test("compares legacy named colors with HEX selections", () => {
+  const legacy = rankItemMatches({ ...lost, color: "Black" }, [found({ color: "#17191C" })])[0];
+  assert.equal(legacy.breakdown.find(signal => signal.key === "color").similarity, 100);
+  assert.ok(legacy.reasons.includes("Same color"));
+});
+
 test("suggestions do not wait for the lost report's publication approval", () => {
   const [match] = rankItemMatches({ ...lost, publication_status: "pending" }, [found({ publication_status: "approved" })]);
   assert.ok(match);

@@ -1,3 +1,5 @@
+import { isHexColor } from "./colors.ts";
+
 export type Report = {
   id: string;
   kind: "lost" | "found";
@@ -19,7 +21,6 @@ export type Report = {
 };
 
 export const itemCategories = ["Wallet", "Bag", "Electronics", "Keys", "Clothing", "Documents", "Jewelry", "Accessories", "Sports equipment", "Toys", "Other"] as const;
-export const itemColors = ["Black", "White", "Gray", "Silver", "Brown", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Multicolor", "Unknown"] as const;
 export const accountContact = (phone: string | null | undefined, email: string | null | undefined) => phone?.trim() || email?.trim() || "";
 
 export function publicListingDraft(report: Pick<Report, "title" | "description" | "location_text">) {
@@ -48,7 +49,7 @@ export function validateReport(form: FormData, previous?: Pick<Report, "category
     else if (values[key].length > limit) errors[key] = `Use ${limit} characters or fewer.`;
   }
   if (values.category && !itemCategories.includes(values.category as typeof itemCategories[number]) && values.category !== previous?.category) errors.category = "Choose a category from the list.";
-  if (values.color && !itemColors.includes(values.color as typeof itemColors[number]) && values.color !== previous?.color) errors.color = "Choose a color from the swatches.";
+  if (values.color && values.color !== "Unknown" && !isHexColor(values.color) && values.color !== previous?.color) errors.color = "Choose a color from the picker or quick palette.";
   const date = String(form.get("occurred_at") ?? "");
   const parsed = new Date(`${date}T00:00:00.000Z`);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) errors.occurred_at = "Enter a valid date.";

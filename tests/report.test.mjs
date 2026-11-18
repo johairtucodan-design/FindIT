@@ -6,7 +6,7 @@ import { preparePhoto } from "../src/lib/photo.ts";
 
 function validForm() {
   const form = new FormData();
-  for (const [key, value] of Object.entries({ title: "House keys", category: "Keys", color: "Silver", description: "Blue keyring", location_text: "Demo park", occurred_at: "2026-01-01" })) form.set(key, value);
+  for (const [key, value] of Object.entries({ title: "House keys", category: "Keys", color: "#C0C0C0", description: "Blue keyring", location_text: "Demo park", occurred_at: "2026-01-01" })) form.set(key, value);
   return form;
 }
 
@@ -24,7 +24,7 @@ test("report validation rejects blank required fields, long values and invalid d
   assert.deepEqual(validateReport(validForm()).errors, {});
 });
 
-test("uses account contact automatically and requires standard category and color choices", () => {
+test("uses account contact automatically and validates category and picked colors", () => {
   assert.equal(accountContact(" 0917 123 4567 ", "person@example.invalid"), "0917 123 4567");
   assert.equal(accountContact(null, "person@example.invalid"), "person@example.invalid");
   assert.equal(accountContact(null, null), "");
@@ -33,6 +33,10 @@ test("uses account contact automatically and requires standard category and colo
   assert.ok(validateReport(invalid).errors.category);
   assert.ok(validateReport(invalid).errors.color);
   assert.deepEqual(validateReport(invalid, { category: "Made up", color: "Neon chartreuse" }).errors, {});
+  const malformedHex = validForm(); malformedHex.set("color", "#12FG00");
+  assert.ok(validateReport(malformedHex).errors.color);
+  const legacy = validForm(); legacy.set("color", "Silver");
+  assert.ok(validateReport(legacy, { category: "Keys", color: "Silver" }).errors.color === undefined);
 });
 
 test("automatic public listing drafts mask account contact details", () => {

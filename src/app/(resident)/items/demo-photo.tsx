@@ -17,11 +17,11 @@ const demoPhotos = new Map([
   ["a6e10000-46b2-4b68-8fb3-000000000007", keys],
 ]);
 
-export default function DemoPhoto({ id, credit = false }: { id: string; credit?: boolean }) {
+export default function DemoPhoto({ id, credit = false, emptyState = false }: { id: string; credit?: boolean; emptyState?: boolean }) {
   const item = demoPhotos.get(id);
-  if (!item) return null;
+  if (!item) return emptyState ? <div className="detail-photo-empty"><span aria-hidden="true">⌕</span><strong>No photo added</strong><p>A clear image can make an item easier to recognize.</p></div> : null;
   return <figure className={credit ? "my-5" : ""}>
-    <Image unoptimized src={`/demo/${item.file}.webp`} width={item.width} height={item.height} alt={item.alt}
+    <Image unoptimized src={`/demo/${item.file}.webp`} width={item.width} height={item.height} alt={item.alt} loading={credit ? "eager" : "lazy"}
       className={`w-full rounded-lg bg-[var(--canvas)] object-contain ${credit ? "max-h-96" : "h-40"}`}/>
     <figcaption className="muted mt-2 text-xs">{credit ? <>
       Example photo only. <a className="text-link" href={`https://commons.wikimedia.org/wiki/File:${item.source}`}>{item.author}</a>, <a className="text-link" href={`https://creativecommons.org/licenses/by-sa/${item.license}/`}>CC BY-SA {item.license}</a>. Resized and converted to WebP.
