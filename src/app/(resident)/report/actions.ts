@@ -4,10 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { preparePhoto } from "@/lib/photo";
-import { editable, isUuid, validateReport, type Report } from "@/lib/reports";
+import { accountContact, editable, isUuid, validateReport, type Report } from "@/lib/reports";
 
 export async function saveReport(kind: string, id: string | null, form: FormData): Promise<{ errors: Record<string, string> }> {
-  const { values, occurred_at, errors } = validateReport(form);
+  const errors: Record<string, string> = {};
   if (kind !== "lost" && kind !== "found") errors.form = "Invalid report type.";
   if (id && !isUuid(id)) errors.form = "Invalid report ID.";
   if (Object.keys(errors).length) return { errors };
@@ -22,6 +22,11 @@ export async function saveReport(kind: string, id: string | null, form: FormData
       return { errors: { form: "You cannot edit this report. It may have entered police custody." } };
     }
   }
+  const { values, occurred_at, errors: formErrors } = validateReport(form, existing);
+  if (Object.keys(formErrors).length) return { errors: formErrors };
+  const { data: profile } = await client.from("profiles").select("phone").eq("id", user.id).maybeSingle();
+  const contactMethod = accountContact(profile?.phone, user.email);
+  if (!contactMethod) return { errors: { form: "Add a contact email or phone number to your account before reporting an item." } };
   const submittedStation = form.get("intended_station_id");
   const station = submittedStation === null ? existing?.intended_station_id ?? "" : String(submittedStation);
   if (station && !isUuid(station)) return { errors: { intended_station_id: "Choose a valid station." } };
@@ -39,7 +44,7 @@ export async function saveReport(kind: string, id: string | null, form: FormData
     const { error } = await client.storage.from("item-photos").upload(photoPath, bytes, { contentType: "image/webp", upsert: false });
     if (error) return { errors: { photo: "Photo upload failed. Please try again. Your report has not been saved." } };
   }
-  const payload = { ...values, occurred_at, intended_station_id: station||null, ...(photoPath ? { photo_path: photoPath } : {}) };
+  const payload = { ...values, occurred_at, contact_method: contactMethod, intended_station_id: station||null, ...(photoPath ? { photo_path: photoPath } : {}) };
   const query = id ? client.from("items").update(payload).eq("id", id) : client.from("items").insert({ ...payload, kind });
   const { data, error } = await query.select("id").single();
   if (error || !data) {

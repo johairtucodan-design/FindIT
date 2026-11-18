@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRole, requireUser } from "@/lib/auth";
 import { preparePhoto, MAX_PHOTO_BYTES } from "@/lib/photo";
-import { isUuid } from "@/lib/reports";
+import { isUuid, publicListingDraft, type Report } from "@/lib/reports";
 export async function operate(operation: string, target: string, form: FormData) {
   const admin=["set_retention","archive_report","seed_demo_cases"].includes(operation);
   const staff=["moderate_report","receive_item","store_item","review_claim","release_item"].includes(operation);
@@ -13,7 +13,17 @@ export async function operate(operation: string, target: string, form: FormData)
   let args: Record<string,unknown>={target};
   let attachment: string | null=null;
   switch(operation) {
-    case "moderate_report": args={target,decision:text("decision"),safe_title:text("safe_title"),safe_description:text("safe_description"),safe_area:text("safe_area")}; break;
+    case "moderate_report": {
+      const decision=text("decision");
+      if (!(["approved","rejected"] as const).includes(decision as "approved"|"rejected")) return {error:"Choose Approve or Deny."};
+      const {data,error}=await client.rpc("staff_reports").eq("id",target).maybeSingle();
+      const report=data as Pick<Report,"title"|"description"|"location_text">|null;
+      if(error||!report) return {error:"This report is outside your station access or could not be loaded."};
+      const draft=publicListingDraft(report);
+      if(decision==="approved"&&(!draft.safe_title||!draft.safe_description||!draft.safe_area)) return {error:"This report does not have enough safe public text to approve."};
+      args={target,decision,...draft};
+      break;
+    }
     case "receive_item": args={target,station:text("station"),storage:text("storage"),confirmed:form.get("confirmed")==="on"}; break;
     case "store_item": args={target,storage:text("storage")}; break;
     case "submit_claim": {
@@ -51,5 +61,6 @@ export async function operate(operation: string, target: string, form: FormData)
     return {error:error.code==="23505"&&operation==="submit_claim"?"You already submitted a claim for this item.":error.code==="P0001"?error.message:error.code==="42501"?"You don’t have access to this operation.":"The change could not be saved. Please try again."};
   }
   for(const path of ["/items","/my","/claims","/security","/manager"]) revalidatePath(path,"layout");
+  if(operation==="moderate_report") return {success:text("decision")==="approved"?"Approved. The generated listing is now public.":"Denied. The report remains hidden from public listings."};
   return {success:`Saved${typeof data==="string"?`. Reference: ${data}`:"."}`};
 }

@@ -34,6 +34,12 @@
 .workspace-identity { font-weight:760; overflow-wrap:anywhere; }
 .workspace-content { width:min(76rem,100%); margin-inline:auto; padding:clamp(1rem,4vw,2.75rem); }
 .workspace-content :is(input,select,textarea) { color:var(--ink); }
+.workflow-actions { display:flex; flex-wrap:wrap; gap:.65rem; }
+.publication-preview { display:grid; gap:.8rem; margin-top:1rem; padding:1rem; border:1px solid var(--line); border-radius:.8rem; background:#fff; }
+.publication-preview dl { display:grid; gap:.7rem; }
+.publication-preview dl > div { display:grid; gap:.15rem; }
+.publication-preview dt { color:var(--muted); font-size:.72rem; font-weight:750; text-transform:uppercase; letter-spacing:.06em; }
+.publication-preview dd { white-space:pre-wrap; overflow-wrap:anywhere; font-size:.88rem; }
 .workspace-heading { display:grid; gap:.5rem; margin-bottom:1.35rem; }
 .workspace-heading .page-title { margin:0; }
 .workspace .panel { box-shadow:0 3px 12px #13243c0b; }

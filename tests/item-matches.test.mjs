@@ -34,12 +34,22 @@ test("uses weighted, explainable signals and normalizes text", () => {
   assert.ok(match.reasons.includes("Same color"));
   assert.ok(match.reasons.includes("Reported nearby"));
   assert.ok(match.reasons.includes("Reported on the same day"));
+  assert.deepEqual(match.breakdown.map(signal => signal.weight), [25, 30, 15, 15, 15]);
+  assert.equal(match.breakdown.reduce((sum, signal) => sum + signal.contribution, 0), 100);
+});
+
+test("suggestions do not wait for the lost report's publication approval", () => {
+  const [match] = rankItemMatches({ ...lost, publication_status: "pending" }, [found({ publication_status: "approved" })]);
+  assert.ok(match);
 });
 
 test("renormalizes weights when some signals are missing", () => {
   const [match] = rankItemMatches(lost, [found({ title: lost.title, description: lost.description, color: "Unknown", location_text: "" })]);
   assert.equal(match.score, 100);
   assert.equal(match.notEnoughDetails, false);
+  assert.ok(match.breakdown.find(signal => signal.key === "category").contribution > 25);
+  assert.equal(match.breakdown.find(signal => signal.key === "color").contribution, null);
+  assert.equal(Math.round(match.breakdown.reduce((sum, signal) => sum + (signal.contribution ?? 0), 0)), match.score);
 });
 
 test("renormalizes when dates are missing and excludes the date reason", () => {

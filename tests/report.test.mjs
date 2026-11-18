@@ -1,17 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import sharp from "sharp";
-import { validateReport } from "../src/lib/reports.ts";
+import { accountContact, publicListingDraft, validateReport } from "../src/lib/reports.ts";
 import { preparePhoto } from "../src/lib/photo.ts";
 
 function validForm() {
   const form = new FormData();
-  for (const [key, value] of Object.entries({ title: "House keys", category: "Keys", color: "Silver", description: "Blue keyring", location_text: "Demo park", occurred_at: "2026-01-01",contact_method:"test@example.invalid" })) form.set(key, value);
+  for (const [key, value] of Object.entries({ title: "House keys", category: "Keys", color: "Silver", description: "Blue keyring", location_text: "Demo park", occurred_at: "2026-01-01" })) form.set(key, value);
   return form;
 }
 
 test("report validation rejects blank required fields, long values and invalid dates", () => {
-  for (const field of ["title", "category", "color", "description", "location_text", "occurred_at","contact_method"]) {
+  for (const field of ["title", "category", "color", "description", "location_text", "occurred_at"]) {
     const form = validForm(); form.set(field, " ");
     assert.ok(validateReport(form).errors[field]);
   }
@@ -22,6 +22,25 @@ test("report validation rejects blank required fields, long values and invalid d
   const form = validForm(); form.set("title", "x".repeat(121));
   assert.ok(validateReport(form).errors.title);
   assert.deepEqual(validateReport(validForm()).errors, {});
+});
+
+test("uses account contact automatically and requires standard category and color choices", () => {
+  assert.equal(accountContact(" 0917 123 4567 ", "person@example.invalid"), "0917 123 4567");
+  assert.equal(accountContact(null, "person@example.invalid"), "person@example.invalid");
+  assert.equal(accountContact(null, null), "");
+  assert.deepEqual(validateReport(validForm()).errors, {});
+  const invalid = validForm(); invalid.set("category", "Made up"); invalid.set("color", "Neon chartreuse");
+  assert.ok(validateReport(invalid).errors.category);
+  assert.ok(validateReport(invalid).errors.color);
+  assert.deepEqual(validateReport(invalid, { category: "Made up", color: "Neon chartreuse" }).errors, {});
+});
+
+test("automatic public listing drafts mask account contact details", () => {
+  const draft = publicListingDraft({ title: "Wallet", description: "Email me at person@example.invalid or call 0917 123 4567", location_text: "Pala-o" });
+  assert.equal(draft.safe_title, "Wallet");
+  assert.equal(draft.safe_area, "Pala-o");
+  assert.ok(!draft.safe_description.includes("person@example.invalid"));
+  assert.ok(!draft.safe_description.includes("0917 123 4567"));
 });
 
 test("photo validation rejects non-images, forged MIME types and oversized files", async () => {

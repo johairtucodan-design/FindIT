@@ -40,8 +40,8 @@ The admin account directory and role assignment RPC are admin-only. Admins canno
 ## Updated manual demo checklist
 
 1. Provision citizen A, citizen B, officer A/station A and officer B/station B through the trusted project administrator. Never enter service-role keys in the browser or repository.
-2. Citizen A submits found property with private contact/proof and intended demo station A. Check Reported — Not Received, publication pending, no public listing, and photo preview.
-3. Officer B cannot open the private record or moderate/receive it. Officer A approves safe text. Check public listing and keyword/category/area/status filters; raw private description/contact remains denied through the API.
+2. Citizen A submits found property with private proof and intended demo station A. Contact is copied from the account phone or sign-in email. Check Reported — Not Received, publication pending, no public listing, and photo preview.
+3. Officer B cannot open the private record or moderate/receive it. Officer A reviews the generated, contact-redacted publication preview and chooses Approve or Deny. Check public listing and keyword/category/area/status filters; raw private description/contact remains denied through the API.
 4. Citizen B submits a private claim; note its UUID. No evidence appears on public pages. Claim approval/release are unavailable.
 5. Officer A explicitly confirms demo possession and storage. Check intake reference, timestamp, actor, received inventory and in-custody update. Repeat receipt fails.
 6. Edit an unreceived report as its reporter; public listing disappears until reapproval. Withdraw and check public removal and retained history.

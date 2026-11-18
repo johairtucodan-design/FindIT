@@ -14,12 +14,14 @@ export type MatchFields = {
   occurred_at: string | null;
 };
 
-type SafeCandidate = Pick<MatchFields, "id" | "kind" | "status" | "title" | "occurred_at">;
-type Signal = { weight: number; similarity: number; reason: string };
+type SignalKey = keyof typeof matchWeights;
+type SafeCandidate = Pick<MatchFields, "id" | "kind" | "status" | "title" | "description" | "category" | "color" | "occurred_at">;
+type Signal = { key: SignalKey; weight: number; similarity: number; reason: string };
 
 const stopWords = new Set(["a", "an", "and", "at", "for", "found", "in", "item", "lost", "missing", "my", "of", "on", "the", "to"]);
 const unknownValues = new Set(["", "unknown", "not sure", "n a", "none", "not provided"]);
 const foundStatuses = new Set<string>(eligibleFoundStatuses);
+const signalLabels: Record<SignalKey, string> = { category: "Category", details: "Title and description", color: "Color", date: "Date proximity", area: "Approximate area" };
 
 function normalize(value: string | null | undefined) {
   return value?.normalize("NFKD").toLowerCase().replace(/\p{M}/gu, "").match(/[\p{L}\p{N}]+/gu)?.join(" ") ?? "";
@@ -47,6 +49,9 @@ function safeCandidate(candidate: MatchFields): SafeCandidate {
     kind: candidate.kind,
     status: candidate.status,
     title: candidate.title,
+    description: candidate.description,
+    category: candidate.category,
+    color: candidate.color,
     occurred_at: candidate.occurred_at,
   };
 }
@@ -63,7 +68,7 @@ export function rankItemMatches<T extends MatchFields>(lost: MatchFields, candid
 
     const signals: Signal[] = [];
     const categoryA = known(lost.category), categoryB = known(candidate.category);
-    if (categoryA && categoryB) signals.push({ weight: matchWeights.category, similarity: categoryA === categoryB ? 1 : 0, reason: categoryA === categoryB ? "Same category" : "Different category" });
+    if (categoryA && categoryB) signals.push({ key: "category", weight: matchWeights.category, similarity: categoryA === categoryB ? 1 : 0, reason: categoryA === categoryB ? "Same category" : "Different category" });
 
     const titleA = tokens(lost.title), titleB = tokens(candidate.title);
     const descriptionA = tokens(lost.description), descriptionB = tokens(candidate.description);
@@ -72,30 +77,36 @@ export function rankItemMatches<T extends MatchFields>(lost: MatchFields, candid
       const descriptionSimilarity = dice(descriptionA, descriptionB);
       const titleSimilarity = dice(titleA, titleB);
       const reason = descriptionSimilarity >= 0.25 ? "Similar description" : titleSimilarity >= 0.25 ? "Similar title" : "Item details differ";
-      signals.push({ weight: matchWeights.details, similarity: dice(detailA, detailB), reason });
+      signals.push({ key: "details", weight: matchWeights.details, similarity: dice(detailA, detailB), reason });
     }
 
     const colorA = known(lost.color), colorB = known(candidate.color);
     if (colorA && colorB) {
       const similarity = colorA === colorB ? 1 : dice(tokens(colorA), tokens(colorB));
-      signals.push({ weight: matchWeights.color, similarity, reason: similarity === 1 ? "Same color" : similarity >= 0.5 ? "Similar color" : "Different color" });
+      signals.push({ key: "color", weight: matchWeights.color, similarity, reason: similarity === 1 ? "Same color" : similarity >= 0.5 ? "Similar color" : "Different color" });
     }
 
     if (dateDifference !== null) {
       const days = Math.floor(dateDifference / 86_400_000);
-      signals.push({ weight: matchWeights.date, similarity: Math.max(0, 1 - dateDifference / matchWindowMs), reason: days === 0 ? "Reported on the same day" : `Reported ${days} ${days === 1 ? "day" : "days"} apart` });
+      signals.push({ key: "date", weight: matchWeights.date, similarity: Math.max(0, 1 - dateDifference / matchWindowMs), reason: days === 0 ? "Reported on the same day" : `Reported ${days} ${days === 1 ? "day" : "days"} apart` });
     }
 
     const areaA = tokens(lost.location_text), areaB = tokens(candidate.location_text);
     if (areaA.size && areaB.size) {
       const similarity = dice(areaA, areaB);
-      signals.push({ weight: matchWeights.area, similarity, reason: similarity >= 0.25 ? "Reported nearby" : "Reported areas differ" });
+      signals.push({ key: "area", weight: matchWeights.area, similarity, reason: similarity >= 0.25 ? "Reported nearby" : "Reported areas differ" });
     }
 
     const totalWeight = signals.reduce((sum, signal) => sum + signal.weight, 0);
     const enoughDetails = signals.length >= 3;
     const score = enoughDetails ? Math.round(signals.reduce((sum, signal) => sum + signal.weight * signal.similarity, 0) / totalWeight * 100) : null;
     const reasons = enoughDetails ? signals.map(signal => signal.reason) : ["Not enough details to compare"];
-    return [{ candidate: safeCandidate(candidate), score, reasons, dateDifference, notEnoughDetails: !enoughDetails }];
+    const breakdown = (Object.keys(matchWeights) as SignalKey[]).map(key => {
+      const signal = signals.find(entry => entry.key === key);
+      return { key, label: signalLabels[key], weight: matchWeights[key], similarity: signal ? Math.round(signal.similarity * 100) : null,
+        contribution: signal && enoughDetails ? Math.round(signal.weight * signal.similarity / totalWeight * 1000) / 10 : null,
+        reason: signal?.reason ?? "Not supplied on both reports" };
+    });
+    return [{ candidate: safeCandidate(candidate), score, reasons, breakdown, dateDifference, notEnoughDetails: !enoughDetails }];
   }).sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || (a.dateDifference ?? Number.MAX_SAFE_INTEGER) - (b.dateDifference ?? Number.MAX_SAFE_INTEGER) || (a.candidate.id ?? "").localeCompare(b.candidate.id ?? "")).slice(0, 5);
 }
