@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import Link from "@/app/app-link";
 
 const links = [
+  ["/", "Home"],
   ["/items", "Browse items"],
   ["/stations", "Police stations"],
   ["/about", "About"],
