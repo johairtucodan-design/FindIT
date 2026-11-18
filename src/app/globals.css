@@ -209,6 +209,11 @@ input[aria-invalid=true], textarea[aria-invalid=true] { border-color: #b91c1c; }
 .auth-field > span:first-child { font-size:.87rem; font-weight:750; }
 .auth-field .report-hint { font-weight:400; }
 .auth-submit { width:100%; min-height:3.1rem; margin-top:.25rem; }
+.auth-links { display:grid; gap:1.2rem; margin-top:1.35rem; }
+.auth-password-link { justify-self:end; color:var(--primary); font-size:.9rem; font-weight:650; text-underline-offset:4px; }
+.auth-password-link:hover { text-decoration:underline; }
+.auth-account-switch { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:.35rem .5rem; border-top:1px solid var(--line); padding-top:1.15rem; color:var(--muted); font-size:.94rem; }
+.auth-account-switch .text-link { border:0; padding:0; background:transparent; font-size:inherit; }
 @media (max-width:700px) {
   .header-inner { grid-template-columns:1fr auto auto; gap:.55rem; }
   .nav-toggle { display:grid; place-content:center; gap:4px; width:2.7rem; aspect-ratio:1; border:1px solid var(--line); border-radius:.65rem; background:white; color:var(--ink); cursor:pointer; }

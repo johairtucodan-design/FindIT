@@ -31,10 +31,15 @@ export default function AuthForm({ initialError, portal }: { initialError?: stri
         {message.success && <p className="notice" role="status">{message.success}</p>}
         <button className="button auth-submit" disabled={pending}>{pending ? "Please wait…" : register ? "Create account" : "Sign in"}</button>
       </form>
-      {!register && <Link className="text-link mt-5 inline-block" href="/auth/reset">Need a password link?</Link>}
-      {!portal && <button className="text-link mt-6" type="button" disabled={pending} onClick={() => { setRegister(!register); setMessage({}); }}>
-          {register ? "Already registered? Sign in" : "New here? Create an account"}
-        </button>}
+      {!portal && <div className="auth-links">
+        {!register && <Link className="auth-password-link" href="/auth/reset">Need a password link?</Link>}
+        <div className="auth-account-switch">
+          <span>{register ? "Already registered?" : "New to FindIT?"}</span>
+          <button className="text-link" type="button" disabled={pending} onClick={() => { setRegister(!register); setMessage({}); }}>
+            {register ? "Sign in" : "Create an account"}
+          </button>
+        </div>
+      </div>}
     </section>
   );
 }
