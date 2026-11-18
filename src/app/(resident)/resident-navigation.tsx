@@ -7,6 +7,7 @@ import Link from "@/app/app-link";
 const links = [
   ["/items", "Browse items"],
   ["/stations", "Police stations"],
+  ["/about", "About"],
 ] as const;
 
 export default function ResidentNavigation({ signedIn }: { signedIn: boolean }) {
