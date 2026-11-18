@@ -6,11 +6,10 @@ const client = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NE
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-test("demo station fixtures remain clearly separated from public references", async () => {
+test("anonymous table reads cannot expose demo station fixtures", async () => {
   const { data, error } = await client.from("stations").select("name,is_demo,is_approved").eq("is_demo", true);
   assert.equal(error, null);
-  assert.equal(data.length, 3);
-  assert.ok(data.every(s => s.is_demo && s.is_approved && s.name.startsWith("DEMO ONLY")));
+  assert.deepEqual(data, []);
 });
 
 test("public station directory contains only sourced, non-demo Iligan references", async () => {

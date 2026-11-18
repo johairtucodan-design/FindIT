@@ -25,7 +25,7 @@ export async function saveReport(kind: string, id: string | null, form: FormData
   const submittedStation = form.get("intended_station_id");
   const station = submittedStation === null ? existing?.intended_station_id ?? "" : String(submittedStation);
   if (station && !isUuid(station)) return { errors: { intended_station_id: "Choose a valid station." } };
-  if (station) {
+  if (station && station !== existing?.intended_station_id) {
     const { data: selectedStation, error } = await client.from("stations").select("is_demo,is_approved").eq("id", station).maybeSingle();
     if (error || !selectedStation?.is_demo || !selectedStation.is_approved) return { errors: { intended_station_id: "Only existing demo assignments can be preserved. Public references do not represent a handover station." } };
   }
