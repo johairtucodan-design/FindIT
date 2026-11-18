@@ -4,14 +4,14 @@ Working on FindIT with the team? [Start with the Obsidian vault](docs/README.md)
 
 > The [Iterations 3–5 handoff](docs/iterations-3-5.md) covers the claim and release workflow, station dashboard, retention, deployment, and the complete demo. The earlier notes below describe the foundation.
 
-> Updated 3 November 2026: the revised workbook redefines Iterations 1 and 2 as PB-001 through PB-021. See [revised scope and verification](docs/revised-iterations.md). The historical implementation notes below describe the original build and are superseded where they differ.
+> Updated 18 November 2026: the revised workbook redefines Iterations 1 and 2 as PB-001 through PB-021. See [revised scope and verification](docs/revised-iterations.md) and the [Iterations 3–5 handoff](docs/iterations-3-5.md).
 
 
-Police-coordinated community lost-and-found **coursework prototype**. No real police partnership is claimed. All seeded stations, addresses, phone placeholders and coordinates are fictional.
+Community lost-and-found **coursework prototype**. The Supabase demo stations and custody records are fictional; the public Iligan station locator separately displays sourced public references with field-level links, check dates, and conflicts. FindIT has no confirmed police partnership or authorized handover points.
 
 ## Implemented: Iterations 1 and 2
 
-Next.js App Router, TypeScript and Tailwind with Supabase Auth, PostGIS, RLS and private photo storage. Citizens can register/sign in, create/edit lost or found reports, upload photos, view their reports and open authorized details. The attached planner is reference material; the user's requested scope takes precedence.
+Next.js App Router, TypeScript and Tailwind with Supabase Auth, PostGIS, RLS and private photo storage. The current build includes citizen reports, a source-linked station locator with a synchronized map and list, simulated staff custody/claims workflows, a distinct admin console, role assignment with audit history, and deterministic item-match suggestions. Suggestions are explainable similarities, not AI, probabilities, or evidence of ownership.
 
 ## Run
 
@@ -29,16 +29,16 @@ In Supabase Authentication → URL Configuration, keep the Site URL on the live 
 
 ## Database and migrations
 
-SQL lives in `supabase/migrations`, in order: foundations (PostGIS, enums, tables, triggers, grants and RLS), storage (private bucket and object policies), demo stations, consolidated station read policies, and citizen reporting (`my_reports` RPC restricted to the signed-in reporter). These migrations have been applied to the connected FindIT project. Do not reapply them to that existing database. The station seed runs as a migration so it runs once.
+SQL lives in `supabase/migrations`, in order: foundations (PostGIS, enums, tables, triggers, grants and RLS), storage (private bucket and object policies), demo stations, consolidated station read policies, citizen reporting, revised workflows, and admin role management. Apply only migrations not already recorded in the intended project. Demo station seeds run once as migrations.
 
 Schema: `stations`, `profiles`, `items`, `custody_events`, `claims`; all have RLS enabled. `profiles.id` references `auth.users.id`. The signup trigger always assigns `citizen`, ignoring any supplied role metadata. There is no finder role.
 
 | Resource | Read | Write |
 | --- | --- | --- |
-| Profiles | Own row; admins read all | Own name/phone. Roles/stations require a trusted administrator operation; no browser role assignment, even by admins. |
+| Profiles | Own row; admins use a role-checked directory | Own name/phone. Admin role/station changes go through a server-checked RPC, cannot change the acting admin, require approved demo stations for staff, and are audited. |
 | Public reports | Explicit safe columns, through `public_items` | No anonymous writes |
 | Full report | `item_detail(target_id)` RPC returns a row only to its reporter or an officer/admin | Signed-in reporter creates/edits own reports before custody. Identity, kind, status and custody fields cannot be edited from the browser. |
-| Stations | Approved stations; admins can also read unapproved | Admin only |
+| Demo stations | Approved stations; admins can also read unapproved | Admin only |
 | Custody events | Officers/admins | Denied to browser sessions until the later custody workflow |
 | Claims | Claimant or officers/admins | Denied to browser sessions until the later claims workflow |
 | Photos | Own user folder or officer/admin | Own user folder only |
@@ -53,22 +53,24 @@ The private `item-photos` bucket allows JPEG, PNG and WebP, up to **5 MiB**. Obj
 
 Open `/auth` to register or sign in with email/password. New passwords require at least eight characters. If email confirmation is enabled, follow the confirmation link in the same browser used to register. `/auth/callback` exchanges the confirmation code; the homepage also forwards codes when Supabase redirects to the configured site root. Delivery to a real mailbox is a manual check below; no real confirmation email was sent during automated testing.
 
-Use `/report/lost` or `/report/found`, then `/my` to open a saved report. Edit links use `/report/lost?edit=<id>` or `/report/found?edit=<id>`. The detail route `/items/[id]` requires the reporter or an officer/admin. Public projections remain available through the safe database view; search/discovery UI is deferred.
+Use `/report/lost` or `/report/found`, then `/my` to open a saved report. Edit links use `/report/lost?edit=<id>` or `/report/found?edit=<id>`. The detail route `/items/[id]` requires the reporter or staff/admin for private fields. Public projections use the safe database view; search and filters only use approved public text.
 
-The server validates sessions with `getUser()` and reads roles from `profiles`. Resident sign-in at `/auth` leads to `/my`. Station sign-in at `/staff` leads to `/security` for officers and admins. Admin sign-in at `/admin` leads to the admin-only console at `/manager`. The sign-in pages share one Supabase account system. Optional server-only `FINDIT_DEMO_*_EMAIL` variables let demo users enter `findituser`, `finditstaff`, or `finditadmin` instead of an email address; the database role still controls access. Invited users set their own passwords at `/auth/setup`. No service role key is used. All mutations use the user's session plus RLS. Authenticated pages and session-refresh responses are not publicly cached.
+The server validates sessions with `getUser()` and reads roles from `profiles`. Resident sign-in at `/auth` leads to `/my`. Staff sign-in at `/staff` leads to `/security` for staff and admins. Admin sign-in at `/admin` leads to the admin-only console at `/manager`. The sign-in pages share one Supabase account system. Optional server-only `FINDIT_DEMO_*_EMAIL` variables let demo users enter `findituser`, `finditstaff`, or `finditadmin` instead of an email address; the database role still controls access. Admins can change another account's FindIT role and demo-station assignment; this does not change its email or password. Invited users set their own passwords at `/auth/setup`. No service-role key is used by the app. Mutations use the user's session, server role checks and RLS. Authenticated pages and session-refresh responses are not publicly cached.
 
 Required report fields: title, category, color, description, date and location text. Private identifying details and a photo are optional. Dates cannot be in the future (Singapore calendar date). Validation and upload errors keep the other entered fields and selected file in the form. Network errors are retryable. Session expiry asks the user to sign in in another tab before retrying, preserving the form.
 
 ## Verification
 
 - `npm run build` and `npm run typecheck`: production compilation and types.
-- `npm test`: seven tests covering live anonymous API access, report validation, forged/oversized image rejection and valid image re-encoding.
+- `npm test`: tests cover live anonymous API access, deterministic match ranking, report validation, forged/oversized image rejection and valid image re-encoding.
 - `node --env-file=.env.local scripts/test-codespaces.mjs`: regression check against a built, running Codespaces-configured app. Verifies both public and localhost Origins, rejection of unrelated origins, and a public confirmation-callback redirect. Run with the same Codespaces environment variables used by the build/server.
 - `npm run test:integration`: run against an already-built, running app using **disposable confirmed test accounts only**. Supply ignored `.env.e2e.local` with `E2E_FIXTURE={"password":"<test-only password>","users":[{"role":"citizen","email":"<test account>"},{"role":"other","email":"<second citizen>"},{"role":"officer","email":"<test officer>"},{"role":"admin","email":"<test admin>"}]}`. These accounts must start without reports. The runner exercises actual Next.js server actions, Supabase Auth/Storage and protected pages; it uses the compiled action manifest. It removes uploaded test photos. Remove its report/account fixtures through the trusted test administrator connection afterward. Test credentials and users from this development session were removed.
 - `supabase/tests/rls.sql`: transactional database assertions for signup role, self/other ownership, private details, officer access, admin access, station writes and forbidden custody/role changes. Test users and reports are rolled back; no test emails are sent.
 - `supabase/verify.sql`: table RLS, PostGIS, bucket constraints, station seed and policy inspection.
 
 Verified on 28 October 2026: production build and types; all seven unit/API tests; live integration tests for login, invalid login, both report types, status, edit, photo upload, private details, cross-user denial, officer/admin permissions and sign out; transactional RLS tests including `my_reports` isolation. Browser checks confirmed invalid-login errors, successful login/report creation, retained form entries after validation errors and no horizontal overflow at a 390px mobile viewport. Test fixtures were removed afterward.
+
+Latest redesign check on 18 November 2026: production build and TypeScript passed; all 12 unit/API tests passed; the transactional `supabase/tests/rls.sql` suite passed against the connected project after applying admin role-management migration `20261118121226`. Live schema inspection confirmed RLS on all eight application tables, PostGIS 3.3.7, and private item-photo and claim-evidence buckets with image-only MIME rules. A Next.js security update is being verified before the production deployment.
 
 Foundation verification: five application tables with RLS; Storage object RLS; PostGIS 3.3.7 in `extensions`; private photo bucket with the specified MIME/size restrictions; three approved, clearly marked dummy stations. Security advisor found no schema/RLS warnings. It reports the project's existing [leaked-password protection setting is disabled](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection); that project setting was not changed.
 
@@ -85,6 +87,8 @@ Foundation verification: five application tables with RLS; Storage object RLS; P
 
 ## Iligan directory and demo photos
 
-- The public police directory lists sourced locations in Iligan City, separate from the fictional drop-off and custody records in Supabase. A missing pin means the exact location was not verified.
+- The locator's public references are separate from fictional Supabase demo stations and custody records. Each field carries its own source links, check date, and status. Sources include the [Iligan City hotline directory](https://iligan.gov.ph/forresidents/hotelinedirectory), [PNP PRO-10 station list](https://itms.pnp.gov.ph/wp-content/uploads/2025/04/PRO-10.pdf), [Philippine Information Agency](https://pia.gov.ph/news/mindanao/nm/iligan-opens-new-police-station-1-building-to-improve-public-service/), and [OpenStreetMap](https://www.openstreetmap.org/copyright), checked 18 November 2026. Some station names or areas conflict between sources; the UI flags these and advises calling before visiting. Only stations with sourced coordinates receive map markers. Receiving hours and service areas are left unclaimed where unavailable.
+- The synchronized station map uses OpenStreetMap's public tile service for light demo traffic and includes its attribution. It has no service guarantee; see the [tile usage policy](https://operations.osmfoundation.org/policies/tiles/). It does not show lost-item locations.
+- Matching is a fixed-weight, deterministic ranking: exact category is required; reports more than 30 days apart are excluded; available title/description terms, color, date, and area/distance contribute up to 100 points. Missing fields lower the score. It has no trained model, does not establish ownership or custody, and has no measured accuracy or F1 score.
 - Demo listings use credited Wikimedia Commons photos bundled in `public/demo/` as WebP. The credits and licenses appear on the report detail pages. The photos illustrate the items and are not evidence.
 - Citizen uploads and claim evidence still use private Supabase Storage. The demo assets ship with the Vercel deployment and do not use that storage quota.

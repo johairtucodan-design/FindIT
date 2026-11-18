@@ -10,7 +10,7 @@
 | PB-031 | Integration script and transactional database scenarios for the full claim workflow. |
 | PB-032–034 | Station and date summaries, reviewed archival, and an admin action to create a pair of fictional demo cases. |
 
-Matching checks category, limits results to 30 days before or after the lost report, and ranks approximate area matches first. Staff verify ownership.
+Matching requires the same category, excludes reports more than 30 days apart, and ranks candidates with fixed weights for category, available title/description terms, color, date proximity, and area/distance. It is deterministic, not AI. Its score is similarity, not probability or proof. Staff verify ownership and physical custody.
 
 ## Release
 

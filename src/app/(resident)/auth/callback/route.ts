@@ -9,7 +9,10 @@ export async function GET(request: NextRequest) {
   if (code) {
     const client = await createClient();
     const { error } = await client.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(new URL("/my", origin));
+    if (!error) {
+      const destination = request.nextUrl.searchParams.get("next") === "/auth/setup" ? "/auth/setup" : "/my";
+      return NextResponse.redirect(new URL(destination, origin));
+    }
   }
   return NextResponse.redirect(new URL("/auth?error=confirmation", origin));
 }

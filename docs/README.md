@@ -1,6 +1,6 @@
 # FindIT team vault
 
-FindIT is a demo of community lost-and-found reporting, station intake, and ownership claims. All seeded stations and receiving details are fictional.
+FindIT is a coursework prototype for community lost-and-found reporting and simulated station intake. Supabase demo stations and custody records are fictional. The public Iligan locator is separate, source-linked reference data; it does not imply a police partnership or authorized handover point.
 
 ## Start here
 

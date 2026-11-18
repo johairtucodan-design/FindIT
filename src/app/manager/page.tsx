@@ -2,20 +2,29 @@ import Link from "@/app/app-link";
 import {requireRole} from "@/lib/auth";
 import WorkflowForm from "@/app/workflow-form";
 import {operate} from "@/app/operations";
-import {saveStation} from "./actions";
+import {assignUserAccess,saveStation} from "./actions";
 
 const stationFields=[["name","Name"],["address","Address"],["phone","Contact phone"],["service_area","Barangay or city served"],["receiving_hours","Posted receiving hours"],["latitude","Latitude for map update"],["longitude","Longitude for map update"]];
+type AdminAccount={user_id:string;email:string|null;full_name:string;role:"citizen"|"officer"|"admin";station_id:string|null;station_name:string|null;created_at:string};
+type AccessChange={id:number;actor_id:string|null;target_id:string;previous_role:"citizen"|"officer"|"admin";new_role:"citizen"|"officer"|"admin";previous_station_id:string|null;new_station_id:string|null;created_at:string};
 
 export default async function Manager({searchParams}:{searchParams:Promise<{station?:string;start?:string;end?:string}>}) {
-  const {client}=await requireRole(["admin"]);
+  const {client,user}=await requireRole(["admin"]);
   const filters=await searchParams;
-  const [stations,rule,candidates]=await Promise.all([
+  const [stations,rule,candidates,users,audit]=await Promise.all([
     client.from("stations").select("*").order("name"),
     client.from("retention_rules").select("retention_days").single(),
     client.rpc("retention_candidates").limit(50),
+    client.rpc("admin_user_directory"),
+    client.from("profile_role_audit").select("id,actor_id,target_id,previous_role,new_role,previous_station_id,new_station_id,created_at").order("created_at",{ascending:false}).limit(12),
   ]);
-  if(stations.error) throw new Error("Unable to load station management");
+  if(stations.error||users.error||audit.error) throw new Error("Unable to load FindIT administration data");
   const sites=stations.data??[];
+  const approvedDemoSites=sites.filter(site=>site.is_demo&&site.is_approved);
+  const accounts=(users.data??[]) as AdminAccount[];
+  const changes=(audit.data??[]) as AccessChange[];
+  const accountById=new Map(accounts.map(account=>[account.user_id,account]));
+  const siteName=(id:string|null)=>id?sites.find(site=>site.id===id)?.name??"Station record unavailable":"No station assigned";
   const station=sites.find(site=>site.id===filters.station)?.id??sites[0]?.id;
   const singaporeDate=(value:Date)=>value.toLocaleDateString("en-CA",{timeZone:"Asia/Singapore"});
   const day=(value:unknown,fallback:string)=>typeof value==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(value)?value:fallback;
@@ -25,6 +34,21 @@ export default async function Manager({searchParams}:{searchParams:Promise<{stat
   const counts=summary?.data as {received:number;pending_claims:number;released:number}|null;
   return <>
     <div className="workspace-heading"><p className="eyebrow">Oversight and configuration</p><h1 className="page-title">Operations overview</h1><p className="muted">Review activity and manage the fictional stations used for FindIT handover demos.</p></div>
+    <section id="users" className="panel workspace-section my-5">
+      <h2 className="text-xl font-bold">FindIT user access</h2><p className="muted my-3">Assign Citizen/User, Staff, or Admin access for FindIT. This does not change Supabase email or password. Staff access must be scoped to an approved demo station; these assignments do not represent police authorization.</p>
+      {!approvedDemoSites.length&&<p className="notice mb-4">Approve a clearly marked demo station before assigning staff access.</p>}
+      <ul className="admin-users-list">{accounts.map(account=><li className="admin-user-card" key={account.user_id}>
+        <div className="admin-user-identity"><span className="admin-user-avatar">{(account.full_name||account.email||"?").slice(0,1).toUpperCase()}</span><div><h3>{account.full_name||"FindIT user"}</h3><p>{account.email}</p><small>Current role: {account.role==="officer"?"Staff":account.role==="admin"?"Admin":"Citizen/User"} · {account.station_name||"No station assigned"}</small></div></div>
+        {account.user_id===user.id?<p className="admin-self-access">For safety, you can’t change your own role or station assignment here.</p>:<WorkflowForm action={assignUserAccess.bind(null,account.user_id)} label="Save access">
+          <label>FindIT role<select name="role" defaultValue={account.role}><option value="citizen">Citizen / User</option><option value="officer">Staff</option><option value="admin">Admin</option></select></label>
+          <label>Staff station assignment<select name="station_id" defaultValue={account.station_id??""}><option value="">No station assignment</option>{approvedDemoSites.map(site=><option key={site.id} value={site.id}>{site.name} · demo station</option>)}</select><span className="report-hint">Only approved demo stations can be assigned. Citizen and Admin roles have no station.</span></label>
+        </WorkflowForm>}
+      </li>)}</ul>
+      <div className="admin-access-audit"><h3>Recent role and station changes</h3>{changes.length?<ol className="timeline">{changes.map(change=>{
+        const actor=change.actor_id?accountById.get(change.actor_id):null;const target=accountById.get(change.target_id);const before=change.previous_role==="officer"?"Staff":change.previous_role==="admin"?"Admin":"Citizen/User";const after=change.new_role==="officer"?"Staff":change.new_role==="admin"?"Admin":"Citizen/User";
+        return <li key={change.id}><strong>{target?.email??"Deleted or unavailable user"}</strong><p className="muted">{before} → {after} · {siteName(change.previous_station_id)} → {siteName(change.new_station_id)}</p><small className="muted">Changed by {actor?.email??change.actor_id??"Trusted database operation"} · {new Date(change.created_at).toLocaleString("en-SG",{timeZone:"Asia/Singapore"})}</small></li>;
+      })}</ol>:<p className="muted mt-2">No role or station changes recorded yet.</p>}</div>
+    </section>
     <section id="activity" className="panel workspace-section my-5">
       <h2 className="text-xl font-bold">Station activity</h2><p className="muted my-3">Receipt and handover events, plus claims still pending from the selected dates. Dates use Singapore time.</p>
       {station?<form className="form-grid filter-grid my-4">

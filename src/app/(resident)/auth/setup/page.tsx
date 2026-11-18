@@ -14,19 +14,19 @@ export default function SetupPasswordPage() {
     const hash = new URLSearchParams(window.location.hash.slice(1));
     const access_token = hash.get("access_token");
     const refresh_token = hash.get("refresh_token");
-    if (!["invite", "recovery"].includes(hash.get("type") ?? "") || !access_token || !refresh_token) {
-      setError("Open this page from your latest FindIT password email.");
-      return;
-    }
     const client = createClient(false);
     clientRef.current = client;
-    client.auth.setSession({ access_token, refresh_token }).then(async ({ error }) => {
-      window.history.replaceState(null, "", window.location.pathname);
-      if (error) { setError("This invitation link could not be verified. Request a new one."); return; }
-      const { data, error: userError } = await client.auth.getUser();
-      if (!data.user || userError) { setError("This invitation link could not be verified. Request a new one."); return; }
+    async function prepare() {
+      if (["invite", "recovery"].includes(hash.get("type") ?? "") && access_token && refresh_token) {
+        const { error } = await client.auth.setSession({ access_token, refresh_token });
+        window.history.replaceState(null, "", window.location.pathname);
+        if (error) { setError("This password link could not be verified. Request a new one."); return; }
+      }
+      const { data, error } = await client.auth.getUser();
+      if (!data.user || error) { setError("Open this page from your latest FindIT password link."); return; }
       setReady(true);
-    });
+    }
+    void prepare();
   }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {

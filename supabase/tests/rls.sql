@@ -1,6 +1,6 @@
 begin;
 create temp table fixtures(label text,id uuid default gen_random_uuid());
-insert into fixtures(label) values ('reporter'),('claimant'),('otherClaimant'),('officerA'),('officerB'),('admin');
+insert into fixtures(label) values ('reporter'),('claimant'),('otherClaimant'),('officerA'),('officerB'),('admin'),('roleTarget');
 grant select on fixtures to authenticated,anon;
 insert into auth.users(id,email) select id,id::text||'@example.invalid' from fixtures;
 create temp table sites as select id,row_number() over(order by name) n from public.stations where is_demo and is_approved;
@@ -10,6 +10,23 @@ update public.profiles set role='officer',station_id=(select id from sites where
 update public.profiles set role='officer',station_id=(select id from sites where n=2) where id=(select id from fixtures where label='officerB');
 update public.profiles set role='admin' where id=(select id from fixtures where label='admin');
 create function pg_temp.denied(statement text) returns void language plpgsql as $$begin begin execute statement; exception when others then return; end;raise exception 'Operation unexpectedly permitted: %',statement;end;$$;
+select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='admin'),true);
+set local role authenticated;
+select public.assign_profile_role((select id from fixtures where label='roleTarget'),'officer',(select id from sites where n=1));
+select public.assign_profile_role((select id from fixtures where label='roleTarget'),'citizen',null);
+do $$begin
+ assert (select count(*)>=7 from public.admin_user_directory());
+ assert (select role='citizen' and station_id is null from public.profiles where id=(select id from fixtures where label='roleTarget'));
+ assert (select count(*)=2 and bool_and(actor_id=auth.uid()) from public.profile_role_audit where target_id=(select id from fixtures where label='roleTarget'));
+ perform pg_temp.denied('update public.profiles set role=''admin'' where id=(select id from fixtures where label=''roleTarget'')');
+ perform pg_temp.denied('select public.assign_profile_role(auth.uid(),''citizen'',null)');
+end;$$;
+select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='reporter'),true);
+do $$begin
+ perform pg_temp.denied('select * from public.admin_user_directory()');
+ perform pg_temp.denied('select public.assign_profile_role((select id from fixtures where label=''roleTarget''),''admin'',null)');
+end;$$;
+reset role;
 select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='officerA'),true);
 set local role authenticated;
 create temp table summary_before as select * from public.station_summary((select id from sites where n=1),current_date,current_date);

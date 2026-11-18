@@ -1,4 +1,4 @@
-.portal { --rail:#0e2342; --rail-end:#173d61; --rail-text:#b8cce3; --signal:#a5dbff; --primary:#175487; --dark:#103657; --soft:#e8f3fd; --line:#d6e2ef; --ink:#13243c; --muted:#49617b; --canvas:#f1f6fb; color:var(--ink); background:var(--canvas); min-height:100svh; }
+.portal { --rail:var(--dark); --rail-end:#37276f; --rail-text:#e6e1fb; --signal:var(--accent); color:var(--ink); background:var(--canvas); min-height:100svh; }
 .portal-intro,.workspace-rail { background:linear-gradient(145deg,var(--rail),var(--rail-end)); color:white; }
 .portal-wordmark { display:flex; align-items:center; flex-wrap:wrap; gap:.65rem; width:fit-content; font-size:1.45rem; font-weight:820; letter-spacing:-.045em; }
 .portal-wordmark > span:first-child,.portal-emblem { display:grid; place-items:center; color:var(--signal); border:1px solid color-mix(in srgb,var(--signal) 45%,transparent); background:color-mix(in srgb,var(--signal) 12%,transparent); }
@@ -43,6 +43,18 @@
 .workspace-metric dd { font-size:1.9rem; font-weight:820; line-height:1.25; }
 .workspace-record { border-left:.23rem solid var(--primary); }
 .workspace-section { scroll-margin-top:1.2rem; }
+.admin-users-list { display:grid; gap:.7rem; margin-top:1rem; }
+.admin-user-card { display:grid; grid-template-columns:minmax(13rem,.8fr) minmax(18rem,1.2fr); align-items:start; gap:1rem; padding:1rem; border:1px solid var(--line); border-radius:.85rem; background:#fff; }
+.admin-user-identity { display:flex; align-items:flex-start; gap:.7rem; min-width:0; }
+.admin-user-avatar { display:grid; place-items:center; flex:none; width:2.5rem; aspect-ratio:1; border-radius:.75rem; color:var(--primary); background:var(--soft); font-weight:850; }
+.admin-user-identity h3 { font-weight:800; overflow-wrap:anywhere; }
+.admin-user-identity p,.admin-user-identity small { display:block; color:var(--muted); font-size:.78rem; overflow-wrap:anywhere; }
+.admin-user-identity small { margin-top:.35rem; }
+.admin-user-card > form { margin-block:0; }
+.admin-self-access { align-self:center; color:var(--muted); font-size:.82rem; }
+.admin-access-audit { margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--line); }
+.admin-access-audit h3 { font-weight:800; }
+.admin-access-audit .timeline { margin-top:.8rem; }
 @media (max-width:720px) {
   .portal-login,.workspace { grid-template-columns:1fr; }
   .portal-intro { gap:1.3rem; }
@@ -53,4 +65,5 @@
   .workspace-menu-label { display:none; }
   .workspace-nav,.workspace-exits { display:flex; flex-wrap:wrap; gap:.25rem .55rem; margin-top:.4rem; padding-top:0; }
   .workspace-nav a,.workspace-exits a { padding:.45rem .3rem; }
+  .admin-user-card { grid-template-columns:1fr; }
 }

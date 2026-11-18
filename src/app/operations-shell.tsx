@@ -5,7 +5,7 @@ import { portals, type Portal } from "@/lib/staff";
 
 const menus = {
   station: [["/security", "Receiving queue", "list"], ["/security?tab=inventory", "Custody inventory", "box"]],
-  admin: [["/manager", "Overview", "chart"], ["/manager#stations", "Demo stations", "building"], ["/manager#retention", "Retention review", "archive"], ["/manager#demo", "Demo cases", "box"]],
+  admin: [["/manager", "Overview", "chart"], ["/manager#users", "User access", "shield"], ["/manager#stations", "Demo stations", "building"], ["/manager#retention", "Retention review", "archive"], ["/manager#demo", "Demo cases", "box"]],
 } as const;
 
 export default function OperationsShell({ portal, identity, admin, children }: {

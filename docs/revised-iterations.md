@@ -6,12 +6,12 @@ Source: `Find_IT.xlsx`, Product Backlog PB-001 to PB-021 and Iteration Plan. The
 
 | Stories | Implementation |
 | --- | --- |
-| PB-001–002 | Staff login routes to a workspace; officers access only their assigned station's private reports, photos, claims and custody events. Admin is an explicitly global role. Role/station assignment remains trusted SQL only. |
-| PB-003–004 | Admin demo station create/edit, directory approval, address, contact, service area and posted receiving hours. Coordinate updates enable locator maps. Unapproved records are excluded publicly. |
+| PB-001–002 | Staff login routes to a separate workspace; staff access only their assigned station's private reports, photos, claims and custody events. Admin has a separate global console. Admins can assign another account a FindIT role and approved demo station through a role-checked server action/RPC; each change is audited. |
+| PB-003–004 | Admin demo station create/edit and approval, address, contact, service area, posted demo hours and coordinates. Unapproved records are excluded publicly. The citizen locator separately lists public Iligan references with field-level provenance, conflict flags and sourced pins. |
 | PB-005–006 | Moderated public listings with unique UUID report references and custody states independent of publication. |
 | PB-007–009 | Lost/found reports, required private contact method, approximate location/date, private proof clues, validated private photo uploads and selected-image preview. Found status is displayed as Reported — Not Received; stored enum remains pending_surrender. |
 | PB-010–011 | Public details use staff-written safe title/description/area; original descriptions, private contacts, proof clues and photo paths cannot be read through public APIs. Search keyword, category, area, status and type; clear filters and empty states. |
-| PB-012–014 | Manual area search, optional GPS, manual demo area center, distance ordering, map and directions. Distances are straight-line estimates. Address list works independently of map/GPS. All seeded coordinates are fictional. |
+| PB-012–014 | Search and filter approved public listings; optional browser GPS; distance sorting; one interactive map synchronized with its station list; mobile list/map toggle. Distances are straight-line estimates. Public-source coordinates appear only when sourced; demo database station coordinates are fictional. |
 | PB-015 | Optional intended station is separate from the held-at station; selecting it never confirms custody. Unassigned submissions enter the global admin queue. |
 | PB-016–018 | Assigned station staff confirm physical possession, record storage, receive an intake-event UUID, and move received items into custody. Timestamp/actor/station transitions are logged. Inventory filters by reference/title and status. No arbitrary release transition is provided. |
 | PB-019 | Signed-in non-reporters submit private text evidence against an approved found report. A submitted claim UUID is returned. Duplicate claims are rejected. Ownership decisions and release remain Iteration 3. |
@@ -22,15 +22,20 @@ Source: `Find_IT.xlsx`, Product Backlog PB-001 to PB-021 and Iteration Plan. The
 
 Officers manage reports whose custody station, or intended station before receipt, equals their profile station. Staff without a station cannot access private station records. Admins have global access by design; there is no new station-admin role. Citizens retain ownership access to their own reports. Published details remain readable by everyone, with only approved text.
 
-Station management is demo-only in the app. Receiving hours are explicitly posted demo hours, not assumed police operating hours. Optional GPS is calculated in the browser and not saved to the database; opening map/directions transmits the station coordinates to OpenStreetMap. The public map never shows a reporter's precise location.
+Supabase station management and simulated custody remain demo-only. The public Iligan directory is a separate, read-only reference built from city, PNP, PIA, and OpenStreetMap sources; each field shows its source and checked date. Conflicting or unavailable addresses, service areas, hours, and pins stay flagged rather than guessed. Receiving hours are not inferred from station opening hours. Optional GPS is calculated in the browser and not saved. The map never shows a reporter's precise location. OpenStreetMap tiles include attribution and are used for light demo traffic under its tile policy.
+
+Match suggestions are deterministic, not AI. A candidate must have the exact same category and fall within 30 days. The fixed score weights category (30), title/description term overlap (35), color (15), date proximity (10), and area or distance (10). Missing values receive no points. The score is a ranking aid, not probability, proof of ownership, or evidence of custody. No F1 or accuracy result is claimed.
+
+The admin account directory and role assignment RPC are admin-only. Admins cannot change their own access; staff assignments require an approved demo station; at least one admin must remain. Role and station changes are written to a restricted audit table. Account email and password are unchanged.
 
 ## Verification
 
-- Production build, TypeScript and seven unit/API tests passed.
+- On 18 November 2026, the production build, TypeScript, all 12 unit/API tests, and transactional RLS/workflow tests passed after applying the admin role-management migration. Live inspection confirmed RLS on all eight application tables, PostGIS 3.3.7, and the private image buckets. The Next.js security update and production deployment are tracked in the current handoff.
 - `supabase/tests/rls.sql` passed against the connected project. It covers separate station officers, hidden pending/rejected records, safe public text, re-moderation after correction, denied unconfirmed/duplicate receipt, physical intake and custody logs, private claim intake, duplicate claims, withdrawal and history. Fixtures roll back.
 - Public listings and station directory returned HTTP 200; an unknown report returned 404. Protected route HTTP checks follow redirects to login.
 - Existing account-based integration runner is retained for manually provisioned disposable accounts: its fixture must contain `station_id`, and the officer must be assigned to that same station. It was not rerun for this revision because creating persistent test credentials was rejected by automatic approval review.
 - Browser checks passed for directory rendering, manual area search, empty results and distance sorting from a chosen demo center. GPS denial, external map rendering, station management and new staff forms remain manual checks. No real mailbox delivery test or real police workflow validation was performed.
+- The station locator, sourced data provenance, fixed-weight match ranking and admin role assignment/audit are later additions. Public station data is not proof of an official FindIT partnership.
 
 ## Updated manual demo checklist
 
@@ -44,4 +49,4 @@ Station management is demo-only in the app. Receiving hours are explicitly poste
 
 ## Deferred
 
-PB-022 onward: claim review decisions, controlled release, claimant tracking/history screens, broad audit UI, basic matching and later polish/retention/dashboard work. AI, alerts and notifications are not part of these revised iterations. Report history and custody event logs exist to support the workflows above.
+The later PB-022–034 workflow is implemented and documented in [Iterations 3–5](iterations-3-5.md). AI matching, alerts and notifications remain out of scope. Report history and custody event logs support the implemented workflows above.

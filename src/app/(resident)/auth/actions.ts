@@ -57,7 +57,10 @@ export async function requestPasswordLink(login: string) {
   const email = await resolveLoginEmail(login);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter a valid email or demo username." };
   const client = await createClient();
-  const { error } = await client.auth.resetPasswordForEmail(email);
+  const host = codespacesHost(process.env);
+  const origin = host ? `https://${host}` : (await headers()).get("origin");
+  const redirectTo = origin ? `${origin}/auth/callback?next=${encodeURIComponent("/auth/setup")}` : undefined;
+  const { error } = await client.auth.resetPasswordForEmail(email, redirectTo ? { redirectTo } : undefined);
   if (error?.code === "over_email_send_rate_limit") return { error: "Supabase has reached its email limit. Please wait and try again later." };
   if (error) return { error: "Could not request a password link. Please try again later." };
   return { success: "If this account exists, a password link is on its way. Check the inbox and spam folder." };

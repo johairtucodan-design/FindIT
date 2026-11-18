@@ -2,6 +2,7 @@ import Link from "@/app/app-link";
 import {notFound} from "next/navigation";
 import {getViewer} from "@/lib/supabase/server";
 import {editable,isUuid,statusLabel,type Report} from "@/lib/reports";
+import {matchWindowMs,rankItemMatches} from "@/lib/item-matches";
 import WorkflowForm from "@/app/workflow-form";
 import {operate} from "@/app/operations";
 import DemoPhoto from "../demo-photo";
@@ -22,15 +23,12 @@ export default async function ItemPage({params}:{params:Promise<{id:string}>}) {
  ]);
  const photoUrl=photo?.signedUrl;
  const reportTime=Date.parse(report.occurred_at);
- const month=30*86400000;
- const matches=report.kind==="lost"?await client.from("public_items").select("id,title,location_text,occurred_at")
-   .eq("kind","found").ilike("category",report.category.replace(/([%_\\])/g,"\\$1")).neq("status","released").neq("status","closed")
-   .gte("occurred_at",new Date(reportTime-month).toISOString()).lte("occurred_at",new Date(reportTime+month).toISOString())
-   .order("occurred_at",{ascending:false}).limit(100):null;
- const term=report.location_text.toLowerCase().trim();
- const distanceFromReport=(date:string)=>Math.abs(Date.parse(date)-reportTime);
- const areaMatch=(area:string)=>{const normalized=area.toLowerCase().trim();return Boolean(term&&normalized&&(term.includes(normalized)||normalized.includes(term)));};
- const suggested=(matches?.data??[]).sort((a,b)=>Number(areaMatch(b.location_text))-Number(areaMatch(a.location_text))||distanceFromReport(a.occurred_at)-distanceFromReport(b.occurred_at)).slice(0,5);
+ const matches=report.kind==="lost"?await client.from("public_items").select("id,title,description,category,color,location_text,occurred_at")
+   .eq("kind","found").ilike("category",report.category.replace(/([%_\\])/g,"\\$1"))
+   .not("status","in","(approved_for_pickup,released,closed)")
+   .gte("occurred_at",new Date(reportTime-matchWindowMs).toISOString()).lte("occurred_at",new Date(reportTime+matchWindowMs).toISOString())
+   .order("occurred_at",{ascending:false}).order("id").limit(100):null;
+ const suggested=rankItemMatches(report,matches?.data??[]);
  const claimable=published?.kind==="found"&&!(["approved_for_pickup","released","closed"].includes(report.status));
  return <article className="panel mx-auto max-w-3xl"><Link href="/items" className="text-link">Back to listings</Link><div className="mt-5"><ReportKind kind={report.kind}/></div><h1 className="page-title">{report.title}</h1><span className={`status my-4 ${report.status==="pending_surrender"?"pending":""}`}>{statusLabel(report.status)}</span><p className="text-sm break-all">Report reference: {id}</p>
  {report.kind==="found"&&report.status==="pending_surrender"&&<p className="notice mt-4">Reported — Not Received. Reporting does not mean police hold this item.</p>}
@@ -44,7 +42,10 @@ export default async function ItemPage({params}:{params:Promise<{id:string}>}) {
  {claimable&&user&&full?.reporter_id!==user.id&&<section className="mt-7"><h2 className="font-bold text-xl">Submit a private ownership claim</h2><WorkflowForm action={operate.bind(null,"submit_claim",id)} label="Submit claim"><label>Ownership evidence<textarea name="evidence" required minLength={10} maxLength={3000} rows={4}/></label><label>Evidence image (optional)<input name="attachment" type="file" accept="image/jpeg,image/png,image/webp"/><span className="muted font-normal">JPEG, PNG or WebP, up to 4 MiB.</span></label><p className="muted">Describe a detail that identifies your property. Keep passwords and full identity documents private.</p></WorkflowForm><Link className="text-link" href="/claims">Track my claims</Link></section>}
  {events&&events.length>0&&<section className="mt-6"><h2 className="font-bold mb-3">Custody history</h2><ol className="timeline">{events.map(e=><li key={e.id} className="text-sm"><strong>{statusLabel(e.from_status)} → {statusLabel(e.to_status)}</strong><br/>{new Date(e.created_at).toLocaleString("en-SG",{timeZone:"Asia/Singapore"})} · Event {e.id} · Actor {e.actor_id} · Station {e.station_id}</li>)}</ol></section>}
  {!user&&claimable&&<Link className="button mt-5" href="/auth">Sign in to submit a private claim</Link>}
- {matches&&<section className="mt-7"><h2 className="font-bold text-xl">Possible matches</h2><p className="muted mt-2">Same category and within 30 days. Similar areas appear first. Station staff verify ownership.</p>
- {matches.error?<p className="muted mt-3">Suggestions couldn’t be loaded. <Link className="text-link" href="/items?kind=found">Browse found items</Link>.</p>:suggested.length?<ul className="timeline mt-4">{suggested.map(item=><li key={item.id}><Link className="text-link" href={`/items/${item.id}`}>{item.title}</Link><p className="muted text-sm">{item.location_text} · {item.occurred_at.slice(0,10)}</p></li>)}</ul>:<p className="muted mt-3">No possible matches yet. Check back as new listings are approved.</p>}</section>}
+ {matches&&<section className="mt-7"><h2 className="font-bold text-xl">Possible matches</h2><p className="muted mt-2">Deterministic suggestions require the same category and compare title and description terms, color, date, and available area or distance. The similarity score is not a probability or proof of ownership or police custody.</p>
+ {matches.error?<p className="muted mt-3">Suggestions couldn’t be loaded. <Link className="text-link" href="/items?kind=found">Browse found items</Link>.</p>:suggested.length?<ol className="mt-4 grid gap-3">{suggested.map(({candidate:item,score,reasons})=><li key={item.id} className="rounded-xl border border-[var(--line)] p-4">
+   <div className="flex flex-wrap items-baseline justify-between gap-2"><Link className="text-link break-words" href={`/items/${item.id}`}>{item.title}</Link><span className="status">{score}/100 similarity score</span></div>
+   <p className="muted mt-1 text-sm">{item.location_text} · {item.occurred_at.slice(0,10)}</p><p className="muted mt-2 text-sm">{reasons.join(" · ")}</p>
+ </li>)}</ol>:<p className="muted mt-3">No possible matches yet. Check back as new listings are approved.</p>}</section>}
  </article>;
 }

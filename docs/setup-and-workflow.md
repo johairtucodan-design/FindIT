@@ -25,13 +25,13 @@ Run `npm run dev` and open [localhost:3000](http://localhost:3000).
 
 ### Codespaces
 
-On GitHub, use **Code → Codespaces → Create codespace** on your branch. Set up `.env.local` and run `npm ci` there too. Run `npm run build`, then `npm start -- --hostname 0.0.0.0`. Open forwarded port **3000** from the **Ports** panel in a browser tab. For confirmation email tests, ask the Supabase project owner to allow that Codespace's HTTPS URL with `/auth/callback` appended.
+On GitHub, use **Code → Codespaces → Create codespace** on your branch. Set up `.env.local` and run `npm ci` there too. Run `npm run build`, then `npm start -- --hostname 0.0.0.0`. Open forwarded port **3000** from the **Ports** panel in a browser tab. For auth emails, ask the Supabase project owner to allow the Codespace URL plus `/auth/callback` and `/auth/callback?next=%2Fauth%2Fsetup` in Redirect URLs.
 
 ### Vercel
 
 Open the [Vercel demo listed on GitHub](https://find-it-taupe.vercel.app). For a new deployment, import the repo with the **Next.js** preset, repository root, and `npm run build`. Add the two variables above in Vercel. The production deployment tracks `main`.
 
-In Supabase **Authentication → URL Configuration**, set the production **Site URL** to the Vercel address and allow the exact production address plus `/auth/callback`. Use a confirmed demo account to test sign-in. If email confirmation is enabled, the built-in Supabase mail service only sends to project team addresses. [Supabase redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls) · [Supabase mail setup](https://supabase.com/docs/guides/auth/auth-smtp)
+In Supabase **Authentication → URL Configuration**, set the production **Site URL** to the Vercel address and allow `/auth/callback` plus `/auth/callback?next=%2Fauth%2Fsetup` for password recovery. Use a confirmed demo account to test sign-in. If email confirmation is enabled, the built-in Supabase mail service only sends to project team addresses; configure custom SMTP for other recipients. [Supabase redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls) · [Supabase mail setup](https://supabase.com/docs/guides/auth/auth-smtp)
 
 ## Pick up a task
 

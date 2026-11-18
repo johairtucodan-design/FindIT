@@ -3,6 +3,7 @@ import { Icon } from "@/app/glyph";
 import { getViewer } from "@/lib/supabase/server";
 import { signOut } from "./auth/actions";
 import InviteRedirect from "./auth/invite-redirect";
+import ResidentNavigation from "./resident-navigation";
 
 export default async function ResidentLayout({ children }: { children: React.ReactNode }) {
   const { user } = await getViewer();
@@ -11,10 +12,7 @@ export default async function ResidentLayout({ children }: { children: React.Rea
     <header className="site-header">
       <div className="site-width header-inner">
         <Link href="/" className="brand"><span><Icon name="mark"/></span>FindIT</Link>
-        <nav aria-label="Resident navigation" className="site-nav">
-          <Link href="/items">Browse items</Link><Link href="/stations">Police stations</Link>
-          {user && <><Link href="/my">My reports</Link><Link href="/claims">My claims</Link></>}
-        </nav>
+        <ResidentNavigation signedIn={!!user}/>
         {user ? <form action={signOut} className="header-action"><button className="button secondary">Sign out</button></form> : <Link href="/auth" className="button secondary header-action">Sign in <Icon name="arrow" size={16}/></Link>}
       </div>
     </header>
