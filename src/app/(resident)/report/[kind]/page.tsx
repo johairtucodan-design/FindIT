@@ -19,7 +19,5 @@ export default async function ReportPage({ params, searchParams }: {
     report = data?.[0];
     if (!report || report.reporter_id !== user.id || report.kind !== kind || !editable(report.status)) notFound();
   }
-  const {data:stations,error}=await client.from("stations").select("id,name").eq("is_approved",true);
-  if(error) throw new Error("Unable to load stations");
-  return <ReportForm kind={kind} report={report} stations={stations??[]} />;
+  return <ReportForm kind={kind} report={report} />;
 }

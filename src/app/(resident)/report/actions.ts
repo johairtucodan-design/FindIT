@@ -4,24 +4,30 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { preparePhoto } from "@/lib/photo";
-import { editable, isUuid, validateReport } from "@/lib/reports";
+import { editable, isUuid, validateReport, type Report } from "@/lib/reports";
 
 export async function saveReport(kind: string, id: string | null, form: FormData): Promise<{ errors: Record<string, string> }> {
   const { values, occurred_at, errors } = validateReport(form);
   if (kind !== "lost" && kind !== "found") errors.form = "Invalid report type.";
   if (id && !isUuid(id)) errors.form = "Invalid report ID.";
   if (Object.keys(errors).length) return { errors };
-  const station=String(form.get("intended_station_id")??"");
-  if(station&&!isUuid(station)) return {errors:{intended_station_id:"Choose a valid station."}};
   const client = await createClient();
   const { data: { user }, error: userError } = await client.auth.getUser();
   if (userError || !user) return { errors: { form: "Your session expired. Sign in in another tab, then try saving again." } };
+  let existing: Report | undefined;
   if (id) {
     const { data, error } = await client.rpc("item_detail", { target_id: id });
-    const report = data?.[0];
-    if (error || !report || report.reporter_id !== user.id || report.kind !== kind || !editable(report.status)) {
+    existing = data?.[0];
+    if (error || !existing || existing.reporter_id !== user.id || existing.kind !== kind || !editable(existing.status)) {
       return { errors: { form: "You cannot edit this report. It may have entered police custody." } };
     }
+  }
+  const submittedStation = form.get("intended_station_id");
+  const station = submittedStation === null ? existing?.intended_station_id ?? "" : String(submittedStation);
+  if (station && !isUuid(station)) return { errors: { intended_station_id: "Choose a valid station." } };
+  if (station) {
+    const { data: selectedStation, error } = await client.from("stations").select("is_demo,is_approved").eq("id", station).maybeSingle();
+    if (error || !selectedStation?.is_demo || !selectedStation.is_approved) return { errors: { intended_station_id: "Only existing demo assignments can be preserved. Public references do not represent a handover station." } };
   }
   let photoPath: string | undefined;
   const photo = form.get("photo");

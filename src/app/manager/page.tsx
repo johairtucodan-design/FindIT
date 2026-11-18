@@ -19,7 +19,7 @@ export default async function Manager({searchParams}:{searchParams:Promise<{stat
     client.from("profile_role_audit").select("id,actor_id,target_id,previous_role,new_role,previous_station_id,new_station_id,created_at").order("created_at",{ascending:false}).limit(12),
   ]);
   if(stations.error||users.error||audit.error) throw new Error("Unable to load FindIT administration data");
-  const sites=stations.data??[];
+  const sites=(stations.data??[]).filter(site=>site.is_demo);
   const approvedDemoSites=sites.filter(site=>site.is_demo&&site.is_approved);
   const accounts=(users.data??[]) as AdminAccount[];
   const changes=(audit.data??[]) as AccessChange[];

@@ -6,11 +6,24 @@ const client = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NE
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-test("anonymous access exposes only approved demo stations", async () => {
-  const { data, error } = await client.from("stations").select("name,is_demo,is_approved");
+test("demo station fixtures remain clearly separated from public references", async () => {
+  const { data, error } = await client.from("stations").select("name,is_demo,is_approved").eq("is_demo", true);
   assert.equal(error, null);
   assert.equal(data.length, 3);
   assert.ok(data.every(s => s.is_demo && s.is_approved && s.name.startsWith("DEMO ONLY")));
+});
+
+test("public station directory contains only sourced, non-demo Iligan references", async () => {
+  const { data, error } = await client.rpc("station_directory");
+  assert.equal(error, null);
+  assert.equal(data.length, 7);
+  assert.ok(data.every(station => station.directory_key?.startsWith("iligan-") && station.source_notes?.fields?.phone?.sources?.length));
+  assert.ok(data.every(station => station.source_notes.checkedAt && Object.values(station.source_notes.fields).every(field => field.note && field.sources.length)));
+  const stationOne = data.find(station => station.directory_key === "iligan-ps1");
+  assert.equal(stationOne.address, "");
+  assert.equal(stationOne.latitude, null);
+  assert.equal(stationOne.longitude, null);
+  assert.equal(stationOne.source_notes.fields.coordinates.status, "conflict");
 });
 
 test("public report projection is accessible", async () => {

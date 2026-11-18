@@ -1,88 +1,101 @@
-type MatchFields = {
+export const matchWeights = { category: 25, details: 30, color: 15, date: 15, area: 15 } as const;
+export const matchWindowMs = 30 * 86_400_000;
+export const eligibleFoundStatuses = ["pending_surrender", "received_by_police", "in_custody"] as const;
+
+export type MatchFields = {
   id?: string;
-  category: string;
-  title: string;
-  description?: string | null;
-  color: string;
-  location_text: string;
-  occurred_at: string;
-  coordinates?: readonly [latitude: number, longitude: number] | null;
+  kind: "lost" | "found";
+  status: string;
+  category: string | null;
+  title: string | null;
+  description: string | null;
+  color: string | null;
+  location_text: string | null;
+  occurred_at: string | null;
 };
 
-const dayMs = 86_400_000;
-export const matchWindowMs = 30 * dayMs;
-const stopWords = new Set(["a", "an", "and", "at", "for", "found", "in", "item", "lost", "missing", "my", "of", "on", "the", "to"]);
-const unknownColors = new Set(["", "unknown", "not sure", "n a", "none"]);
+type SafeCandidate = Pick<MatchFields, "id" | "kind" | "status" | "title" | "occurred_at">;
+type Signal = { weight: number; similarity: number; reason: string };
 
-function terms(...values: Array<string | null | undefined>) {
-  const words = values.flatMap(value => (value?.normalize("NFKD").toLowerCase().replace(/\p{M}/gu, "").match(/[\p{L}\p{N}]+/gu) ?? []));
-  return new Set(words.filter(word => word.length > 1 && !stopWords.has(word)));
-}
+const stopWords = new Set(["a", "an", "and", "at", "for", "found", "in", "item", "lost", "missing", "my", "of", "on", "the", "to"]);
+const unknownValues = new Set(["", "unknown", "not sure", "n a", "none", "not provided"]);
+const foundStatuses = new Set<string>(eligibleFoundStatuses);
 
 function normalize(value: string | null | undefined) {
-  return (value?.normalize("NFKD").toLowerCase().replace(/\p{M}/gu, "").match(/[\p{L}\p{N}]+/gu) ?? []).join(" ");
+  return value?.normalize("NFKD").toLowerCase().replace(/\p{M}/gu, "").match(/[\p{L}\p{N}]+/gu)?.join(" ") ?? "";
+}
+
+function tokens(value: string | null | undefined) {
+  return new Set(normalize(value).split(" ").filter(word => word.length > 1 && !stopWords.has(word)));
 }
 
 function dice(left: Set<string>, right: Set<string>) {
   if (!left.size || !right.size) return 0;
-  let shared = 0;
-  for (const word of left) if (right.has(word)) shared++;
-  return 2 * shared / (left.size + right.size);
+  let overlap = 0;
+  for (const word of left) if (right.has(word)) overlap++;
+  return (2 * overlap) / (left.size + right.size);
 }
 
-function validCoordinates(value: MatchFields["coordinates"]): value is readonly [number, number] {
-  return Boolean(value && Number.isFinite(value[0]) && Number.isFinite(value[1]) && Math.abs(value[0]) <= 90 && Math.abs(value[1]) <= 180);
+function known(value: string | null | undefined) {
+  const normalized = normalize(value);
+  return normalized && !unknownValues.has(normalized) ? normalized : "";
 }
 
-function distanceKm(a: readonly [number, number], b: readonly [number, number]) {
-  const rad = Math.PI / 180, lat1 = a[0] * rad, lat2 = b[0] * rad;
-  const dLat = (b[0] - a[0]) * rad, dLon = (b[1] - a[1]) * rad;
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-  return 12_742 * Math.asin(Math.sqrt(Math.min(1, h)));
+function safeCandidate(candidate: MatchFields): SafeCandidate {
+  return {
+    id: candidate.id,
+    kind: candidate.kind,
+    status: candidate.status,
+    title: candidate.title,
+    occurred_at: candidate.occurred_at,
+  };
 }
 
 export function rankItemMatches<T extends MatchFields>(lost: MatchFields, candidates: T[]) {
-  const category = normalize(lost.category);
-  const lostText = terms(lost.title, lost.description);
-  const lostArea = terms(lost.location_text);
-  const date = Date.parse(lost.occurred_at);
+  if (lost.kind !== "lost" || lost.status !== "open") return [];
+  const lostDate = Date.parse(lost.occurred_at ?? "");
 
   return candidates.flatMap(candidate => {
-    const candidateDate = Date.parse(candidate.occurred_at);
-    const dateDifference = Math.abs(candidateDate - date);
-    if (!category || normalize(candidate.category) !== category || !Number.isFinite(dateDifference) || dateDifference > matchWindowMs) return [];
+    const candidateDate = Date.parse(candidate.occurred_at ?? "");
+    const hasDateSignal = Number.isFinite(lostDate) && Number.isFinite(candidateDate);
+    const dateDifference = hasDateSignal ? Math.abs(candidateDate - lostDate) : null;
+    if (candidate.kind !== "found" || !foundStatuses.has(candidate.status) || (dateDifference !== null && dateDifference > matchWindowMs)) return [];
 
-    const candidateText = terms(candidate.title, candidate.description);
-    const sharedTerms = [...lostText].filter(word => candidateText.has(word)).sort();
-    let score = 30 + 10 * Math.max(0, 1 - dateDifference / matchWindowMs);
-    const days = Math.floor(dateDifference / dayMs);
-    const reasons = ["Same category", days === 0 ? "Same date" : `${days} ${days === 1 ? "day" : "days"} apart`];
-    if (lostText.size && candidateText.size) {
-      score += 35 * dice(lostText, candidateText);
-      if (sharedTerms.length) reasons.push(`Shared terms: ${sharedTerms.slice(0, 4).join(", ")}`);
+    const signals: Signal[] = [];
+    const categoryA = known(lost.category), categoryB = known(candidate.category);
+    if (categoryA && categoryB) signals.push({ weight: matchWeights.category, similarity: categoryA === categoryB ? 1 : 0, reason: categoryA === categoryB ? "Same category" : "Different category" });
+
+    const titleA = tokens(lost.title), titleB = tokens(candidate.title);
+    const descriptionA = tokens(lost.description), descriptionB = tokens(candidate.description);
+    const detailA = new Set([...titleA, ...descriptionA]), detailB = new Set([...titleB, ...descriptionB]);
+    if (detailA.size && detailB.size) {
+      const descriptionSimilarity = dice(descriptionA, descriptionB);
+      const titleSimilarity = dice(titleA, titleB);
+      const reason = descriptionSimilarity >= 0.25 ? "Similar description" : titleSimilarity >= 0.25 ? "Similar title" : "Item details differ";
+      signals.push({ weight: matchWeights.details, similarity: dice(detailA, detailB), reason });
     }
 
-    const normalizedColor = normalize(lost.color), candidateNormalizedColor = normalize(candidate.color);
-    const knownColor = !unknownColors.has(normalizedColor) && Boolean(normalizedColor);
-    const candidateHasColor = !unknownColors.has(candidateNormalizedColor) && Boolean(candidateNormalizedColor);
-    if (knownColor && candidateHasColor) {
-      const sameColor = normalizedColor === candidateNormalizedColor;
-      if (sameColor) score += 15;
-      if (sameColor) reasons.push("Same color");
+    const colorA = known(lost.color), colorB = known(candidate.color);
+    if (colorA && colorB) {
+      const similarity = colorA === colorB ? 1 : dice(tokens(colorA), tokens(colorB));
+      signals.push({ weight: matchWeights.color, similarity, reason: similarity === 1 ? "Same color" : similarity >= 0.5 ? "Similar color" : "Different color" });
     }
 
-    if (validCoordinates(lost.coordinates) && validCoordinates(candidate.coordinates)) {
-      const km = distanceKm(lost.coordinates, candidate.coordinates);
-      score += 10 * Math.max(0, 1 - km / 50);
-      reasons.push(km < 2 ? "Locations are within about 2 km" : km < 10 ? "Locations are within about 10 km" : km < 50 ? "Locations are within about 50 km" : "Locations are more than 50 km apart");
-    } else {
-      const candidateArea = terms(candidate.location_text);
-      if (lostArea.size && candidateArea.size) {
-        score += 10 * dice(lostArea, candidateArea);
-        if ([...lostArea].some(word => candidateArea.has(word))) reasons.push("Area terms overlap");
-      }
+    if (dateDifference !== null) {
+      const days = Math.floor(dateDifference / 86_400_000);
+      signals.push({ weight: matchWeights.date, similarity: Math.max(0, 1 - dateDifference / matchWindowMs), reason: days === 0 ? "Reported on the same day" : `Reported ${days} ${days === 1 ? "day" : "days"} apart` });
     }
 
-    return [{ candidate, score: Math.round(score), reasons, dateDifference }];
-  }).sort((a, b) => b.score - a.score || a.dateDifference - b.dateDifference || (a.candidate.id ?? "").localeCompare(b.candidate.id ?? "")).slice(0, 5);
+    const areaA = tokens(lost.location_text), areaB = tokens(candidate.location_text);
+    if (areaA.size && areaB.size) {
+      const similarity = dice(areaA, areaB);
+      signals.push({ weight: matchWeights.area, similarity, reason: similarity >= 0.25 ? "Reported nearby" : "Reported areas differ" });
+    }
+
+    const totalWeight = signals.reduce((sum, signal) => sum + signal.weight, 0);
+    const enoughDetails = signals.length >= 3;
+    const score = enoughDetails ? Math.round(signals.reduce((sum, signal) => sum + signal.weight * signal.similarity, 0) / totalWeight * 100) : null;
+    const reasons = enoughDetails ? signals.map(signal => signal.reason) : ["Not enough details to compare"];
+    return [{ candidate: safeCandidate(candidate), score, reasons, dateDifference, notEnoughDetails: !enoughDetails }];
+  }).sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || (a.dateDifference ?? Number.MAX_SAFE_INTEGER) - (b.dateDifference ?? Number.MAX_SAFE_INTEGER) || (a.candidate.id ?? "").localeCompare(b.candidate.id ?? "")).slice(0, 5);
 }

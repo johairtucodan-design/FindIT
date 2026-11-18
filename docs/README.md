@@ -1,6 +1,6 @@
 # FindIT team vault
 
-FindIT is a coursework prototype for community lost-and-found reporting and simulated station intake. Supabase demo stations and custody records are fictional. The public Iligan locator is separate, source-linked reference data; it does not imply a police partnership or authorized handover point.
+FindIT is a coursework prototype for community lost-and-found reporting and simulated station intake. Supabase demo stations and custody records are fictional and remain isolated from the source-linked Iligan public-reference directory. Public listings do not imply a police partnership or confirmed handover point. See [station sources](station-directory-sources.md) and [matching rules](matching.md).
 
 ## Start here
 

@@ -2,7 +2,7 @@ import Link from "@/app/app-link";
 import {notFound} from "next/navigation";
 import {getViewer} from "@/lib/supabase/server";
 import {editable,isUuid,statusLabel,type Report} from "@/lib/reports";
-import {matchWindowMs,rankItemMatches} from "@/lib/item-matches";
+import {eligibleFoundStatuses,matchWindowMs,rankItemMatches,type MatchFields} from "@/lib/item-matches";
 import WorkflowForm from "@/app/workflow-form";
 import {operate} from "@/app/operations";
 import DemoPhoto from "../demo-photo";
@@ -22,13 +22,13 @@ export default async function ItemPage({params}:{params:Promise<{id:string}>}) {
    full?client.from("custody_events").select("id,station_id,actor_id,from_status,to_status,created_at").eq("item_id",id).order("created_at",{ascending:false}):{data:null},
  ]);
  const photoUrl=photo?.signedUrl;
- const reportTime=Date.parse(report.occurred_at);
- const matches=report.kind==="lost"?await client.from("public_items").select("id,title,description,category,color,location_text,occurred_at")
-   .eq("kind","found").ilike("category",report.category.replace(/([%_\\])/g,"\\$1"))
-   .not("status","in","(approved_for_pickup,released,closed)")
+ const eligibleLost=published?.kind==="lost"&&published.status==="open";
+ const reportTime=Date.parse(published?.occurred_at??"");
+ const matches=eligibleLost?await client.from("public_items").select("id,kind,status,title,description,category,color,location_text,occurred_at")
+   .eq("kind","found").in("status",[...eligibleFoundStatuses])
    .gte("occurred_at",new Date(reportTime-matchWindowMs).toISOString()).lte("occurred_at",new Date(reportTime+matchWindowMs).toISOString())
    .order("occurred_at",{ascending:false}).order("id").limit(100):null;
- const suggested=rankItemMatches(report,matches?.data??[]);
+ const suggested=eligibleLost?rankItemMatches(published as MatchFields,matches?.data??[]):[];
  const claimable=published?.kind==="found"&&!(["approved_for_pickup","released","closed"].includes(report.status));
  return <article className="panel mx-auto max-w-3xl"><Link href="/items" className="text-link">Back to listings</Link><div className="mt-5"><ReportKind kind={report.kind}/></div><h1 className="page-title">{report.title}</h1><span className={`status my-4 ${report.status==="pending_surrender"?"pending":""}`}>{statusLabel(report.status)}</span><p className="text-sm break-all">Report reference: {id}</p>
  {report.kind==="found"&&report.status==="pending_surrender"&&<p className="notice mt-4">Reported — Not Received. Reporting does not mean police hold this item.</p>}
@@ -42,10 +42,11 @@ export default async function ItemPage({params}:{params:Promise<{id:string}>}) {
  {claimable&&user&&full?.reporter_id!==user.id&&<section className="mt-7"><h2 className="font-bold text-xl">Submit a private ownership claim</h2><WorkflowForm action={operate.bind(null,"submit_claim",id)} label="Submit claim"><label>Ownership evidence<textarea name="evidence" required minLength={10} maxLength={3000} rows={4}/></label><label>Evidence image (optional)<input name="attachment" type="file" accept="image/jpeg,image/png,image/webp"/><span className="muted font-normal">JPEG, PNG or WebP, up to 4 MiB.</span></label><p className="muted">Describe a detail that identifies your property. Keep passwords and full identity documents private.</p></WorkflowForm><Link className="text-link" href="/claims">Track my claims</Link></section>}
  {events&&events.length>0&&<section className="mt-6"><h2 className="font-bold mb-3">Custody history</h2><ol className="timeline">{events.map(e=><li key={e.id} className="text-sm"><strong>{statusLabel(e.from_status)} → {statusLabel(e.to_status)}</strong><br/>{new Date(e.created_at).toLocaleString("en-SG",{timeZone:"Asia/Singapore"})} · Event {e.id} · Actor {e.actor_id} · Station {e.station_id}</li>)}</ol></section>}
  {!user&&claimable&&<Link className="button mt-5" href="/auth">Sign in to submit a private claim</Link>}
- {matches&&<section className="mt-7"><h2 className="font-bold text-xl">Possible matches</h2><p className="muted mt-2">Deterministic suggestions require the same category and compare title and description terms, color, date, and available area or distance. The similarity score is not a probability or proof of ownership or police custody.</p>
- {matches.error?<p className="muted mt-3">Suggestions couldn’t be loaded. <Link className="text-link" href="/items?kind=found">Browse found items</Link>.</p>:suggested.length?<ol className="mt-4 grid gap-3">{suggested.map(({candidate:item,score,reasons})=><li key={item.id} className="rounded-xl border border-[var(--line)] p-4">
-   <div className="flex flex-wrap items-baseline justify-between gap-2"><Link className="text-link break-words" href={`/items/${item.id}`}>{item.title}</Link><span className="status">{score}/100 similarity score</span></div>
-   <p className="muted mt-1 text-sm">{item.location_text} · {item.occurred_at.slice(0,10)}</p><p className="muted mt-2 text-sm">{reasons.join(" · ")}</p>
- </li>)}</ol>:<p className="muted mt-3">No possible matches yet. Check back as new listings are approved.</p>}</section>}
+ {report.kind==="lost"&&<section className="mt-7"><h2 className="font-bold text-xl">Possible matches</h2><p className="muted mt-2">Suggestions compare approved found reports by category (25%), item details (30%), color (15%), date (15%), and approximate area (15%). Missing signals are reweighted. Scores are suggestions, not proof of ownership or police custody.</p>
+ {!eligibleLost?<p className="muted mt-3">Suggestions appear after this lost report is approved for public listing and while it remains open.</p>:matches?.error?<p className="muted mt-3">Suggestions couldn’t be loaded. <Link className="text-link" href="/items?kind=found">Browse found items</Link>.</p>:suggested.length?<ol className="mt-4 grid gap-3">{suggested.map(({candidate:item,score,reasons,notEnoughDetails})=><li key={item.id} className="rounded-xl border border-[var(--line)] p-4">
+   <div className="flex flex-wrap items-baseline justify-between gap-2"><Link className="text-link break-words" href={`/items/${item.id}`}>{item.title}</Link><span className="status">{notEnoughDetails?"Not enough details to compare":`${score}/100 similarity score`}</span></div>
+   <p className="muted mt-1 text-sm">{item.occurred_at?.slice(0,10)} · {statusLabel(item.status)}</p>{item.status==="pending_surrender"&&<p className="notice mt-3 text-sm">Reported — Not Received. This is not proof that police hold the item.</p>}<p className="muted mt-2 text-sm">{reasons.join(" · ")}</p>
+ </li>)}</ol>:<p className="muted mt-3">No eligible approved found reports are available to compare yet.</p>}
+ </section>}
  </article>;
 }
