@@ -30,11 +30,11 @@ The admin account directory and role assignment RPC are admin-only. Admins canno
 
 ## Verification
 
-- On 18 November 2026, the production build, TypeScript, all 12 unit/API tests, and transactional RLS/workflow tests passed after applying the admin role-management migration. Live inspection confirmed RLS on all eight application tables, PostGIS 3.3.7, and the private image buckets. The Next.js security update and production deployment are tracked in the current handoff.
+- On 18 November 2026, Next.js 16.4.6's production build, TypeScript, all 12 unit/API tests, and transactional RLS/workflow tests passed after applying the admin role-management migration. Live inspection confirmed RLS on all eight application tables, PostGIS 3.3.7, and the private image buckets.
 - `supabase/tests/rls.sql` passed against the connected project. It covers separate station officers, hidden pending/rejected records, safe public text, re-moderation after correction, denied unconfirmed/duplicate receipt, physical intake and custody logs, private claim intake, duplicate claims, withdrawal and history. Fixtures roll back.
 - Public listings and station directory returned HTTP 200; an unknown report returned 404. Protected route HTTP checks follow redirects to login.
 - Existing account-based integration runner is retained for manually provisioned disposable accounts: its fixture must contain `station_id`, and the officer must be assigned to that same station. It was not rerun for this revision because creating persistent test credentials was rejected by automatic approval review.
-- Browser checks passed for directory rendering, manual area search, empty results and distance sorting from a chosen demo center. GPS denial, external map rendering, station management and new staff forms remain manual checks. No real mailbox delivery test or real police workflow validation was performed.
+- Mobile browser QA confirmed the home page, responsive navigation, station list, loaded OpenStreetMap tiles, and two-way list/marker selection updating the selected station details. GPS denial, desktop layout, station management, and role assignment remain manual UI checks. No real mailbox delivery test or real police workflow validation was performed.
 - The station locator, sourced data provenance, fixed-weight match ranking and admin role assignment/audit are later additions. Public station data is not proof of an official FindIT partnership.
 
 ## Updated manual demo checklist

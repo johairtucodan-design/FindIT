@@ -52,6 +52,8 @@ export default function StationMap({ stations, selectedId, active, onSelect }: {
       const instance = map.current;
       const L = leaflet.current;
       if (!instance || !L) return;
+      const size = instance.getSize();
+      if (!size.x || !size.y) return;
       markers.current.forEach(marker => marker.remove());
       markers.current.clear();
       for (const station of stationsRef.current) {
@@ -85,7 +87,10 @@ export default function StationMap({ stations, selectedId, active, onSelect }: {
   useEffect(() => {
     const instance = map.current;
     if (!instance) return;
-    const timer = window.setTimeout(() => instance.invalidateSize({ pan: false }), 80);
+    const timer = window.setTimeout(() => {
+      instance.invalidateSize({ pan: false });
+      redrawRef.current();
+    }, 80);
     return () => window.clearTimeout(timer);
   }, [active, selectedId]);
 
