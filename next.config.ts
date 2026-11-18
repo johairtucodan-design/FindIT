@@ -5,7 +5,7 @@ const host = codespacesHost(process.env);
 
 const config: NextConfig = {
   allowedDevOrigins: host ? [host] : [],
-  experimental: { serverActions: {
+  experimental: { agentUpgrade: "security", serverActions: {
     bodySizeLimit: "6mb",
     // Codespaces' embedded preview can send a localhost Origin through its public host.
     allowedOrigins: host ? [host, "localhost:3000"] : [],
