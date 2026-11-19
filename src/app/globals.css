@@ -353,6 +353,7 @@ input[aria-invalid=true], textarea[aria-invalid=true] { border-color: #b91c1c; }
 .private-photo-empty button { margin-top:.2rem; border:0; background:none; font:inherit; cursor:pointer; text-decoration:underline; }
 .demo-badge { display:inline-flex; align-items:center; padding:.38rem .62rem; border:1px solid #e7c99b; border-radius:999px; background:#fff7e8; color:#765118; font-size:.68rem; font-weight:800; letter-spacing:.04em; }
 .demo-disclaimer { padding:.85rem 1rem; border:1px solid #e7c99b; border-radius:.85rem; background:#fffaf0; color:#765118; font-size:.82rem; line-height:1.55; }
+.listing-photo-note { margin-top:.65rem; padding:.7rem .9rem; border-left:3px solid var(--primary); border-radius:.55rem; background:var(--soft); color:var(--muted); font-size:.78rem; line-height:1.5; }
 .demo-counts { display:flex; flex-wrap:wrap; gap:.7rem; }
 .demo-counts > span { padding:.6rem .85rem; border:1px solid var(--line); border-radius:.7rem; background:#fff; color:var(--muted); font-size:.82rem; }
 .demo-counts strong { color:var(--ink); font-size:1rem; }
