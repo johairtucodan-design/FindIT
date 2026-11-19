@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { preparePhoto } from "@/lib/photo";
+import { removeReportPhoto, uploadReportPhoto } from "@/lib/report-photos";
 import { accountContact, editable, isUuid, validateReport, type Report } from "@/lib/reports";
 
 export async function saveReport(kind: string, id: string | null, form: FormData): Promise<{ errors: Record<string, string> }> {
@@ -37,19 +37,18 @@ export async function saveReport(kind: string, id: string | null, form: FormData
   let photoPath: string | undefined;
   const photo = form.get("photo");
   if (photo instanceof File && (photo.size || photo.name)) {
-    let bytes: Buffer;
-    try { bytes = await preparePhoto(photo); }
+    try { photoPath = await uploadReportPhoto(client.storage.from("item-photos"), user.id, photo); }
     catch (error) { return { errors: { photo: error instanceof Error ? error.message : "Photo could not be read." } }; }
-    photoPath = `${user.id}/${crypto.randomUUID()}.webp`;
-    const { error } = await client.storage.from("item-photos").upload(photoPath, bytes, { contentType: "image/webp", upsert: false });
-    if (error) return { errors: { photo: "Photo upload failed. Please try again. Your report has not been saved." } };
   }
   const payload = { ...values, occurred_at, contact_method: contactMethod, intended_station_id: station||null, ...(photoPath ? { photo_path: photoPath } : {}) };
   const query = id ? client.from("items").update(payload).eq("id", id) : client.from("items").insert({ ...payload, kind });
   const { data, error } = await query.select("id").single();
   if (error || !data) {
-    if (photoPath) await client.storage.from("item-photos").remove([photoPath]);
+    if (photoPath && !await removeReportPhoto(client.storage.from("item-photos"), photoPath)) console.error("Unattached report photo cleanup failed.");
     return { errors: { form: "Report could not be saved. Please try again; your entries are kept." } };
+  }
+  if (photoPath && existing?.photo_path && existing.photo_path !== photoPath && !await removeReportPhoto(client.storage.from("item-photos"), existing.photo_path)) {
+    console.error("Replaced report photo cleanup failed.");
   }
   revalidatePath("/my");
   revalidatePath(`/items/${data.id}`);

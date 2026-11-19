@@ -72,12 +72,18 @@ try {
     assert.ok(data[0].photo_path); photos.push(data[0].photo_path);
     const photo = await client.storage.from("item-photos").download(data[0].photo_path); assert.equal(photo.error, null);
     const detail = await fetch(`${base}/items/${id}`, { headers: { Cookie: cookie() } });
-    assert.equal(detail.status, 200); assert.match(await detail.text(), /Private test engraving/);
+    assert.equal(detail.status, 200);
+    const detailHtml = await detail.text();
+    assert.match(detailHtml, /Private test engraving/);
+    assert.match(detailHtml, /storage\/v1\/object\/sign\/item-photos\//, "authorized detail must render a fresh private signed photo URL");
     const edit = await action("saveReport", [kind, id], { ...fields, title: `E2E ${kind} edited` }, `/report/${kind}?edit=${id}`);
     assert.ok(edit.response.headers.get("x-action-redirect"));
   }
   const { data: mine } = await client.rpc("my_reports"); assert.equal(mine.length, 2);
-  const myPage = await fetch(base + "/my", { headers: { Cookie: cookie() } }); assert.match(await myPage.text(), /E2E found edited/);
+  const myPage = await fetch(base + "/my", { headers: { Cookie: cookie() } });
+  const myHtml = await myPage.text();
+  assert.match(myHtml, /E2E found edited/);
+  assert.match(myHtml, /storage\/v1\/object\/sign\/item-photos\//, "my reports must render private signed photo URLs");
   console.log("PASS lost/found create, initial statuses, private photo upload, detail, edit and my reports");
   await login("other");
   const { data: theirs } = await client.rpc("my_reports"); assert.equal(theirs.length, 0);
@@ -85,6 +91,10 @@ try {
     const { data } = await client.rpc("item_detail", { target_id: id }); assert.equal(data.length, 0);
     const response = await fetch(`${base}/items/${id}`, { headers: { Cookie: cookie() } }); assert.equal(response.status, 404);
   }
+  const otherPage = await fetch(base + "/my", { headers: { Cookie: cookie() } });
+  assert.doesNotMatch(await otherPage.text(), /storage\/v1\/object\/sign\/item-photos\//, "another citizen must not receive private photo URLs");
+  const refreshAttack = await action("refreshReportPhotoUrl", [reportIds[0]], {}, "/my");
+  assert.doesNotMatch(refreshAttack.text, /storage\/v1\/object\/sign\/item-photos\//, "another citizen cannot mint a signed photo URL");
   const attack = await action("saveReport", ["found", reportIds[1]], fields, "/report/found"); assert.match(attack.text, /cannot edit/);
   assert.ok((await client.storage.from("item-photos").download(photos[0])).error);
   console.log("PASS another citizen cannot view/edit reports or download photos");
@@ -92,6 +102,9 @@ try {
   assert.equal((await fetch(base + "/security", { headers: { Cookie: cookie() } })).status, 200);
   assert.equal((await client.rpc("item_detail", { target_id: reportIds[0] })).data[0].private_details, fields.private_details);
   assert.equal((await client.storage.from("item-photos").download(photos[0])).error, null);
+  const staffDetail = await fetch(`${base}/security/reports/${reportIds[0]}`, { headers: { Cookie: cookie() } });
+  assert.equal(staffDetail.status, 200);
+  assert.match(await staffDetail.text(), /storage\/v1\/object\/sign\/item-photos\//, "authorized staff detail must render the private photo");
   const deniedAdmin = await fetch(base + "/manager", { headers: { Cookie: cookie() }, redirect: "manual" });
   assert.equal(deniedAdmin.status, 307); assert.equal(deniedAdmin.headers.get("location"), "/access-denied");
   const found = reportIds[1];

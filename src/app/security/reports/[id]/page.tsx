@@ -3,6 +3,8 @@ import { requireRole } from "@/lib/auth";
 import { isUuid, statusLabel, type Report } from "@/lib/reports";
 import Link from "@/app/app-link";
 import ReportKind from "@/app/report-kind";
+import PrivateReportPhoto from "@/app/private-report-photo";
+import { signReportPhoto } from "@/lib/report-photos";
 
 export default async function StationReport({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -12,8 +14,8 @@ export default async function StationReport({ params }: { params: Promise<{ id: 
   if (error) throw new Error("Unable to load the station report.");
   const report = data as Report | null;
   if (!report) notFound();
-  const [photo, history, custody] = await Promise.all([
-    report.photo_path ? client.storage.from("item-photos").createSignedUrl(report.photo_path, 300) : null,
+  const [photoUrl, history, custody] = await Promise.all([
+    report.photo_path ? signReportPhoto(client.storage.from("item-photos"), report.photo_path) : null,
     client.from("report_history").select("id,created_at,event_type").eq("item_id",id).order("created_at",{ascending:false}),
     client.from("custody_events").select("id,created_at,from_status,to_status").eq("item_id",id).order("created_at",{ascending:false}),
   ]);
@@ -32,7 +34,7 @@ export default async function StationReport({ params }: { params: Promise<{ id: 
       ].map(([label, value]) => <div key={label}><dt className="muted">{label}</dt><dd>{value || "Not recorded"}</dd></div>)}</dl>
       <h3 className="font-bold">Description</h3><p className="whitespace-pre-wrap break-words">{report.description}</p>
       {report.private_details && <div className="mt-4"><h3 className="font-bold">Private identifying details</h3><p className="whitespace-pre-wrap break-words">{report.private_details}</p></div>}
-      {photo?.data?.signedUrl && <a className="text-link mt-4 inline-block" href={photo.data.signedUrl} target="_blank" rel="noreferrer">Open private report photo</a>}
+      {report.photo_path && <PrivateReportPhoto itemId={id} title={report.title} initialUrl={photoUrl}/>}
       {report.kind === "found" && <div className="mt-5"><Link href={`/security/claims/${id}`} className="button">Review ownership claims</Link></div>}
     </section>
     <section className="panel my-5"><h2 className="text-xl font-bold">Custody history</h2>

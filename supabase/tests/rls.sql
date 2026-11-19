@@ -27,16 +27,24 @@ do $$begin
  perform pg_temp.denied('select public.assign_profile_role((select id from fixtures where label=''roleTarget''),''admin'',null)');
 end;$$;
 reset role;
+update public.profiles set role='officer',station_id=(select id from sites where n=1) where id=(select id from fixtures where label='reporter');
 select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='officerA'),true);
 set local role authenticated;
 create temp table summary_before as select * from public.station_summary((select id from sites where n=1),current_date,current_date);
 select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='reporter'),true);
-insert into public.items(kind,title,description,category,color,location_text,occurred_at,contact_method,intended_station_id,private_details)
-select 'found','Sensitive title','Original secret engraving','Keys','Silver','Exact place',now(),'private@example.invalid',id,'Unique secret' from sites where n=1;
+insert into storage.objects(bucket_id,name) values('item-photos',auth.uid()::text||'/rls-photo.webp');
+insert into public.items(kind,title,description,category,color,location_text,occurred_at,contact_method,intended_station_id,private_details,photo_path)
+select 'found','Sensitive title','Original secret engraving','Keys','Silver','Exact place',now(),'private@example.invalid',id,'Unique secret',auth.uid()::text||'/rls-photo.webp' from sites where n=1;
 create temp table target as select id from public.my_reports();
 grant select on target to authenticated,anon;
+reset role;
+update public.profiles set role='citizen',station_id=null where id=(select id from fixtures where label='reporter');
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='reporter'),true);
 do $$begin
  assert (select status='pending_surrender' and held_at_station_id is null and publication_status='pending' from public.item_detail((select id from target)));
+ assert (select photo_path=auth.uid()::text||'/rls-photo.webp' from public.item_detail((select id from target)));
+ assert (select count(*)=1 from storage.objects where bucket_id='item-photos' and name=auth.uid()::text||'/rls-photo.webp'), 'Reporter can see their private photo object';
  assert (select count(*)=0 from public.public_items where id=(select id from target));
  perform pg_temp.denied('select description from public.items');
  perform pg_temp.denied('select public.receive_item((select id from target),(select id from sites where n=1),''Shelf'',true)');
@@ -44,15 +52,25 @@ end;$$;
 select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='officerB'),true);
 do $$begin
  assert (select count(*)=0 from public.item_detail((select id from target)));
+ assert (select count(*)=0 from storage.objects where bucket_id='item-photos' and name=(select id::text||'/rls-photo.webp' from fixtures where label='reporter')), 'Unassigned officer cannot see another station photo';
  assert (select count(*)=0 from public.staff_reports() where id=(select id from target));
  perform pg_temp.denied('select public.receive_item((select id from target),(select id from sites where n=1),''Shelf'',true)');
  perform pg_temp.denied('select public.moderate_report((select id from target),''approved'',''Keys'',''Safe description'',''Demo area'')');
 end;$$;
 select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='officerA'),true);
+do $$begin
+ assert (select count(*)=1 from storage.objects where bucket_id='item-photos' and name=(select id::text||'/rls-photo.webp' from fixtures where label='reporter')), 'Assigned officer can see the report photo';
+end;$$;
 select public.moderate_report((select id from target),'approved','Keys','Safe description','Demo area');
+reset role;
+update public.items set intended_station_id=null where id=(select id from target);
+set local role authenticated;
 select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='reporter'),true);
 update public.items set description='Corrected original secret' where id=(select id from target);
 do $$begin assert (select count(*)=0 from public.public_items where id=(select id from target)), 'Edits must return to moderation';end;$$;
+reset role;
+update public.items set intended_station_id=(select id from sites where n=1) where id=(select id from target);
+set local role authenticated;
 select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='officerA'),true);
 select public.moderate_report((select id from target),'rejected','','','');
 do $$begin assert (select count(*)=0 from public.public_items where id=(select id from target)), 'Rejected records hidden';end;$$;
@@ -62,6 +80,9 @@ do $$begin
  perform pg_temp.denied('select public.receive_item((select id from target),(select id from sites where n=1),''Shelf'',false)');
 end;$$;
 select public.receive_item((select id from target),(select id from sites where n=1),'Shelf A',true);
+do $$begin
+ assert (select count(*)=1 from storage.objects where bucket_id='item-photos' and name=(select id::text||'/rls-photo.webp' from fixtures where label='reporter')), 'Assigned officer can see the received report photo';
+end;$$;
 select public.store_item((select id from target),'Shelf B');
 do $$begin
  assert (select status='in_custody' and storage_location='Shelf B' from public.item_detail((select id from target)));
@@ -84,7 +105,10 @@ do $$begin
  perform pg_temp.denied('select public.station_summary((select id from sites where n=1),current_date,current_date)');
 end;$$;
 select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='otherClaimant'),true);
-do $$begin assert (select count(*)=0 from public.claims where item_id=(select id from target)); end;$$;
+do $$begin
+ assert (select count(*)=0 from public.claims where item_id=(select id from target));
+ assert (select count(*)=0 from storage.objects where bucket_id='item-photos' and name=(select id::text||'/rls-photo.webp' from fixtures where label='reporter')), 'Another citizen cannot read the private photo';
+end;$$;
 select public.submit_claim((select id from target),'Competing private evidence');
 select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='officerA'),true);
 do $$begin

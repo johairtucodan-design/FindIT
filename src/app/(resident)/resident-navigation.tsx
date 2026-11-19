@@ -7,6 +7,7 @@ import Link from "@/app/app-link";
 const links = [
   ["/", "Home"],
   ["/items", "Browse items"],
+  ["/demo", "Demo data"],
   ["/stations", "Police stations"],
   ["/about", "About"],
 ] as const;

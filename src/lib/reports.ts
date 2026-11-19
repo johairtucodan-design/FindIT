@@ -2,6 +2,7 @@ import { isHexColor } from "./colors.ts";
 
 export type Report = {
   id: string;
+  is_demo: boolean;
   kind: "lost" | "found";
   reporter_id: string;
   title: string;

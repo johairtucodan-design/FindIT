@@ -4,7 +4,6 @@ import { statusLabel, type Report } from "@/lib/reports";
 import Link from "@/app/app-link";
 import { Icon } from "@/app/glyph";
 import ReportKind from "@/app/report-kind";
-import DemoPhoto from "./demo-photo";
 import ListingFilters, { type Filters } from "./listing-filters";
 
 const statuses = ["open","pending_surrender","received_by_police","in_custody","approved_for_pickup","released","closed"];
@@ -17,7 +16,7 @@ function listingsUrl(filters: Partial<Filters>) {
 
 async function Results({ filters }: { filters: Filters }) {
   const client = await createClient();
-  let query = client.from("public_items").select("*").order("occurred_at", { ascending: false }).limit(100);
+  let query = client.from("public_items").select("*").eq("is_demo", false).order("occurred_at", { ascending: false }).limit(100);
   if (filters.status) query = query.eq("status", filters.status);
   if (filters.kind) query = query.eq("kind", filters.kind);
   for (const [term, column] of [[filters.q,"title"],[filters.area,"location_text"],[filters.category,"category"]]) {
@@ -29,7 +28,6 @@ async function Results({ filters }: { filters: Filters }) {
   if (!data?.length) return <section className="panel"><h2 className="font-bold text-xl">No matching listings</h2><p className="muted mt-2">Try a broader area or clear your filters.</p></section>;
   return <ul className="listing-grid">{(data as Report[]).map(r => <li key={r.id}><Link className="panel report-card quick-card h-full" href={`/items/${r.id}`}>
     <div className="flex flex-wrap gap-2 items-center justify-between"><ReportKind kind={r.kind}/><span className={`status ${r.status === "pending_surrender" ? "pending" : ""}`}>{statusLabel(r.status)}</span></div>
-    <DemoPhoto id={r.id}/>
     <h2 className="font-bold text-xl">{r.title}</h2><p>{r.category} · {r.location_text} · {r.occurred_at.slice(0,10)}</p><span className="quick-action">View item <Icon name="arrow" size={17}/></span>
   </Link></li>)}</ul>;
 }
@@ -41,7 +39,7 @@ export default async function Listings({ searchParams }: { searchParams: Promise
   if (!statuses.includes(filters.status)) filters.status = "";
   if (!tabs.some(([kind]) => kind === filters.kind)) filters.kind = "";
   return <>
-    <p className="eyebrow">Community discovery</p><h1 className="page-title">Browse lost and found items</h1><p className="muted mt-3">Search public listings approved by station staff.</p>
+    <p className="eyebrow">Community discovery</p><h1 className="page-title">Browse lost and found items</h1><p className="muted mt-3">Search public listings approved by station staff. <Link className="text-link" href="/demo">Explore 80 synthetic demo examples</Link>.</p>
     <nav className="listing-tabs mt-6" aria-label="Report type">{tabs.map(([kind, label]) => <Link key={kind} className="button secondary" href={listingsUrl({ ...filters, kind })} aria-current={kind === filters.kind ? "page" : undefined}>{label}</Link>)}</nav>
     <ListingFilters filters={filters} filterKey={listingsUrl(filters)} statuses={statuses} clearUrl={listingsUrl({ kind: filters.kind })}/>
     <Suspense key={listingsUrl(filters)} fallback={<p className="panel muted" role="status">Loading listings…</p>}>

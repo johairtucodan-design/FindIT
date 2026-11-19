@@ -19,7 +19,7 @@ export default async function ResidentLayout({ children }: { children: React.Rea
     <main id="main" className="site-width site-main">{children}</main>
     <footer className="site-width site-footer">
       <div className="footer-brand"><Link href="/" className="brand"><span className="brand-icon"><Icon name="mark" size={18}/></span><span className="brand-name">Find<span>IT</span></span></Link><p>Community lost &amp; found · Iligan City</p></div>
-      <nav aria-label="Explore FindIT" className="footer-links"><Link href="/items">Browse reports</Link><Link href="/stations">Station references</Link><Link href="/about">About FindIT</Link></nav>
+      <nav aria-label="Explore FindIT" className="footer-links"><Link href="/items">Browse reports</Link><Link href="/demo">Demo data</Link><Link href="/stations">Station references</Link><Link href="/about">About FindIT</Link></nav>
       <nav aria-label="Team access" className="footer-links"><Link href="/staff">Staff sign-in</Link><Link href="/admin">Admin sign-in</Link></nav>
     </footer>
   </>;
