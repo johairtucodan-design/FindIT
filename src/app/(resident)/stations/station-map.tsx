@@ -2,26 +2,40 @@
 
 import { useEffect, useRef } from "react";
 import type { Station } from "./directory";
+import type { StationLocationPin } from "@/lib/station-locations";
 
 const cityCenter: [number, number] = [8.228, 124.245];
+const keyFor = (kind: "station" | "location", id: string) => `${kind}:${id}`;
 
-export default function StationMap({ stations, selectedId, active, onSelect }: {
+export default function StationMap({ stations, locations = [], selectedKey, active, selectedCoordinates = null, pickMode = false, onSelect, onPickCoordinate }: {
   stations: readonly Station[];
-  selectedId: string | null;
+  locations?: readonly StationLocationPin[];
+  selectedKey: string | null;
   active: boolean;
-  onSelect: (id: string) => void;
+  selectedCoordinates?: readonly [latitude: number, longitude: number] | null;
+  pickMode?: boolean;
+  onSelect?: (key: string) => void;
+  onPickCoordinate?: (point: [latitude: number, longitude: number]) => void;
 }) {
   const node = useRef<HTMLDivElement>(null);
   const map = useRef<import("leaflet").Map | null>(null);
   const leaflet = useRef<typeof import("leaflet") | null>(null);
   const markers = useRef(new Map<string, import("leaflet").Marker>());
   const stationsRef = useRef(stations);
-  const selectedRef = useRef(selectedId);
+  const locationsRef = useRef(locations);
+  const selectedRef = useRef(selectedKey);
+  const selectedCoordinatesRef = useRef(selectedCoordinates);
   const onSelectRef = useRef(onSelect);
+  const onPickRef = useRef(onPickCoordinate);
+  const pickModeRef = useRef(pickMode);
   const redrawRef = useRef<() => void>(() => {});
   stationsRef.current = stations;
-  selectedRef.current = selectedId;
+  locationsRef.current = locations;
+  selectedRef.current = selectedKey;
+  selectedCoordinatesRef.current = selectedCoordinates;
   onSelectRef.current = onSelect;
+  onPickRef.current = onPickCoordinate;
+  pickModeRef.current = pickMode;
 
   useEffect(() => {
     let cancelled = false;
@@ -34,6 +48,9 @@ export default function StationMap({ stations, selectedId, active, onSelect }: {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
       }).addTo(instance);
+      instance.on("click", event => {
+        if (pickModeRef.current) onPickRef.current?.([event.latlng.lat, event.latlng.lng]);
+      });
       map.current = instance;
       leaflet.current = L;
       redrawRef.current();
@@ -59,30 +76,53 @@ export default function StationMap({ stations, selectedId, active, onSelect }: {
       for (const station of stationsRef.current) {
         const point = station.coordinates.value;
         if (!point) continue;
-        const selected = station.id === selectedRef.current;
+        const key = keyFor("station", station.id), selected = key === selectedRef.current;
         const marker = L.marker([point[0], point[1]], {
-          title: station.name.value ?? "Police station",
-          alt: `Select ${station.name.value ?? "police station"}`,
+          title: station.name.value ?? "Police station reference",
+          alt: `Select ${station.name.value ?? "police station reference"}`,
           keyboard: true,
-          icon: L.divIcon({
-            className: "findit-station-icon",
-            html: '<span class="findit-station-marker"></span>',
-            iconSize: [30, 38],
-            iconAnchor: [15, 35],
-          }),
+          icon: L.divIcon({ className: "findit-station-icon", html: '<span class="findit-station-marker"></span>', iconSize: [30, 38], iconAnchor: [15, 35] }),
           zIndexOffset: selected ? 1000 : 0,
         }).addTo(instance);
-        marker.on("click", () => onSelectRef.current(station.id));
-        markers.current.set(station.id, marker);
+        marker.on("click", () => onSelectRef.current?.(key));
+        markers.current.set(key, marker);
         if (selected) marker.getElement()?.classList.add("is-selected");
       }
-      const station = stationsRef.current.find(item => item.id === selectedRef.current);
-      const point = station?.coordinates.value;
+      for (const location of locationsRef.current) {
+        const key = keyFor("location", location.id), selected = key === selectedRef.current;
+        const marker = L.marker([location.latitude, location.longitude], {
+          title: location.name,
+          alt: `Select suggested location ${location.name}`,
+          keyboard: true,
+          icon: L.divIcon({ className: "findit-location-icon", html: '<span class="findit-location-marker"></span>', iconSize: [30, 38], iconAnchor: [15, 35] }),
+          zIndexOffset: selected ? 1100 : 100,
+        }).addTo(instance);
+        marker.on("click", () => onSelectRef.current?.(key));
+        markers.current.set(key, marker);
+        if (selected) marker.getElement()?.classList.add("is-selected");
+      }
+      const point = selectedCoordinatesRef.current;
+      if (pickModeRef.current && point) {
+        const marker = L.marker([point[0], point[1]], {
+          title: "Selected location for review",
+          alt: "Selected map location",
+          keyboard: true,
+          icon: L.divIcon({ className: "findit-picker-icon", html: '<span class="findit-picker-marker"></span>', iconSize: [30, 38], iconAnchor: [15, 15] }),
+          zIndexOffset: 1200,
+        }).addTo(instance);
+        markers.current.set("picker", marker);
+      }
+      const selectedStation = selectedRef.current?.startsWith("station:")
+        ? stationsRef.current.find(item => keyFor("station", item.id) === selectedRef.current) : null;
+      const selectedLocation = selectedRef.current?.startsWith("location:")
+        ? locationsRef.current.find(item => keyFor("location", item.id) === selectedRef.current) : null;
+      const target = point ? [point[0], point[1]] as [number, number] : (selectedStation?.coordinates.value as [number, number] | null) ??
+        (selectedLocation ? [selectedLocation.latitude, selectedLocation.longitude] as [number, number] : null);
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      instance.flyTo(point ? [point[0], point[1]] : cityCenter, point ? 15 : 12, { animate: !reduced, duration: reduced ? 0 : .55 });
+      instance.flyTo(target ?? cityCenter, target ? 15 : 12, { animate: !reduced, duration: reduced ? 0 : .45 });
     };
     redrawRef.current();
-  }, [stations, selectedId]);
+  }, [stations, locations, selectedKey, selectedCoordinates, pickMode]);
 
   useEffect(() => {
     const instance = map.current;
@@ -92,7 +132,7 @@ export default function StationMap({ stations, selectedId, active, onSelect }: {
       redrawRef.current();
     }, 80);
     return () => window.clearTimeout(timer);
-  }, [active, selectedId]);
+  }, [active, selectedKey]);
 
-  return <div ref={node} className="station-map-canvas" role="region" aria-label="Interactive map of sourced police station locations"/>;
+  return <div ref={node} className="station-map-canvas" role="region" aria-label={pickMode ? "Select a proposed location on the interactive map" : "Interactive map of sourced station references and reviewed public pins"}/>;
 }

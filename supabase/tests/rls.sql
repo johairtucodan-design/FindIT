@@ -3,7 +3,7 @@ create temp table fixtures(label text,id uuid default gen_random_uuid());
 insert into fixtures(label) values ('reporter'),('claimant'),('otherClaimant'),('officerA'),('officerB'),('admin'),('roleTarget');
 grant select on fixtures to authenticated,anon;
 insert into auth.users(id,email) select id,id::text||'@example.invalid' from fixtures;
-create temp table sites as select id,row_number() over(order by name) n from public.stations where is_demo and is_approved;
+create temp table sites as select id,row_number() over(order by name) n from public.stations where not is_demo and is_approved;
 grant select on sites to authenticated,anon;
 set local time zone 'Asia/Singapore';
 update public.profiles set role='officer',station_id=(select id from sites where n=1) where id=(select id from fixtures where label='officerA');
@@ -158,14 +158,67 @@ do $$begin
  perform pg_temp.denied('select public.archive_report((select id from target),false)');
 end;$$;
 select public.archive_report((select id from target),true);
-select public.seed_demo_cases();
-select public.seed_demo_cases();
 do $$begin
  assert (select archived_at is not null from public.item_detail((select id from target)));
  assert (select count(*)=1 from public.report_history where item_id=(select id from target) and event_type='Report archived' and actor_id=auth.uid());
  assert (select count(*)=4 from public.custody_events where item_id=(select id from target));
- assert (select count(*)=2 from public.staff_reports() where id in ('93200000-3131-4131-8131-000000000001','93200000-3131-4131-8131-000000000002'));
+ assert (select count(*)=0 from public.staff_reports() where is_demo), 'Synthetic reports must never enter station operations';
+ perform pg_temp.denied('select public.seed_demo_cases()');
 end;$$;
+do $$declare demo_found uuid; demo_station uuid; begin
+  select i.id,i.intended_station_id into demo_found,demo_station
+    from pg_catalog.generate_series(1,7) as n(i)
+    cross join lateral public.item_detail(('a6e10000-46b2-4b68-8fb3-'||pg_catalog.lpad(n.i::text,12,'0'))::uuid) i
+    where i.is_demo and i.kind='found' and i.status='pending_surrender' and i.intended_station_id is not null limit 1;
+  assert demo_found is not null and demo_station is not null, 'Synthetic found fixture exists';
+  perform pg_temp.denied(pg_catalog.format('select public.receive_item(%L,%L,%L,true)',demo_found,demo_station,'Synthetic shelf'));
+end;$$;
+
+-- Station pin proposals are station-scoped, reviewed before display, and audited.
+reset role;
+create temp table location_target(id uuid);
+grant select,insert on location_target to authenticated,anon;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='officerA'),true);
+insert into location_target select public.propose_station_location(
+  (select id from sites where n=1),'Synthetic RLS pin','Synthetic-only map proposal','Synthetic visit instructions for rollback test',8.2,124.2
+);
+do $$begin
+ assert (select status='pending_review' and is_active from public.station_locations where id=(select id from location_target));
+ assert (select count(*)=1 from public.station_locations_for_staff() where id=(select id from location_target));
+ assert (select count(*)=0 from public.station_location_directory() where id=(select id from location_target));
+end;$$;
+select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='officerB'),true);
+do $$begin
+ assert (select count(*)=0 from public.station_locations_for_staff() where id=(select id from location_target));
+ perform pg_temp.denied('select public.update_station_location((select id from location_target),''Edited pin'',''New description'',''New visit note'',8.2,124.2)');
+ perform pg_temp.denied('select public.station_location_review_queue()');
+end;$$;
+select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='admin'),true);
+do $$begin assert (select count(*)=1 from public.station_location_review_queue() where id=(select id from location_target));end;$$;
+select public.review_station_location((select id from location_target),'approved');
+do $$begin
+ assert (select status='approved' and reviewed_by=auth.uid() and reviewed_at is not null from public.station_locations where id=(select id from location_target));
+ assert (select count(*)=1 from public.station_location_events where location_id=(select id from location_target) and event_type='approved');
+end;$$;
+reset role;
+set local role anon;
+do $$begin
+ assert (select count(*)=1 from public.station_location_directory() where id=(select id from location_target));
+ perform pg_temp.denied('select * from public.station_locations');
+end;$$;
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='officerA'),true);
+select public.deactivate_station_location((select id from location_target));
+do $$begin
+ assert (select not is_active from public.station_locations where id=(select id from location_target));
+ assert (select count(*)=0 from public.station_location_directory() where id=(select id from location_target));
+ assert (select count(*)=3 from public.station_location_events where location_id=(select id from location_target));
+end;$$;
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='admin'),true);
 set local role anon;
 do $$begin
  assert (select count(*)=0 from public.public_items where held_at_station_id is not null);
@@ -173,4 +226,4 @@ do $$begin
  perform pg_temp.denied('select private_answer from public.claims');
 end;$$;
 rollback;
-select 'PASS publication, intake, custody, private claims, approval, release, station summary and archival' as result;
+select 'PASS publication, intake, custody, private claims, pin authorization and review, demo isolation, release and archival' as result;

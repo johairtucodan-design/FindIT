@@ -4,8 +4,8 @@ import { signOutOfPortal } from "./(resident)/auth/actions";
 import { portals, type Portal } from "@/lib/staff";
 
 const menus = {
-  station: [["/security", "Receiving queue", "list"], ["/security?tab=inventory", "Custody inventory", "box"]],
-  admin: [["/manager", "Overview", "chart"], ["/manager#users", "User access", "shield"], ["/manager#stations", "Demo stations", "building"], ["/manager#retention", "Retention review", "archive"], ["/manager#demo", "Demo cases", "box"]],
+  station: [["/security", "Receiving queue", "list"], ["/security?tab=review", "Publication review", "list"], ["/security?tab=inventory", "Custody inventory", "box"], ["/security/locations", "Map locations", "pin"]],
+  admin: [["/manager", "Overview", "chart"], ["/manager#users", "User access", "shield"], ["/manager#locations", "Map review", "pin"], ["/manager#retention", "Retention review", "archive"]],
 } as const;
 
 export default function OperationsShell({ portal, identity, admin, children }: {

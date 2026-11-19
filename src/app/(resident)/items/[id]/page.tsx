@@ -8,6 +8,7 @@ import { operate } from "@/app/operations";
 import DemoPhoto from "../demo-photo";
 import ReportKind from "@/app/report-kind";
 import MatchScore from "./match-score";
+import MatchBreakdown from "./match-breakdown";
 import PrivateReportPhoto from "@/app/private-report-photo";
 import { signReportPhoto } from "@/lib/report-photos";
 
@@ -73,7 +74,7 @@ export default async function ItemPage({ params }: { params: Promise<{ id: strin
           <div className="match-card-top"><div><p className="match-overline">FOUND REPORT</p><Link className="match-title" href={`/items/${item.id}`}>{item.title}</Link><p className="muted mt-2 text-sm">{item.occurred_at?.slice(0, 10)} · {statusLabel(item.status)}</p></div><MatchScore score={notEnoughDetails ? null : score}/></div>
           {item.status === "pending_surrender" && <p className="notice mt-4 text-sm">Reported — Not Received. Reporting does not mean police hold this item.</p>}
           <div className="match-reasons">{reasons.map(reason => <span key={reason}>{reason}</span>)}</div>
-          <details className="match-details"><summary>View score breakdown</summary><div className="match-detail-body"><div className="match-attributes"><span>Category: {item.category || "Not listed"}</span><span>Color: {item.color || "Not listed"}</span><span>Date: {item.occurred_at?.slice(0, 10) || "Not listed"}</span></div><p className="match-public-copy">{item.description || "No public description provided."}</p><dl className="match-breakdown">{breakdown.map(signal => <div key={signal.key}><dt>{signal.label} <span>{signal.weight}% base weight</span></dt><dd>{signal.similarity === null ? signal.reason : <>{signal.reason} · {signal.similarity}% similarity{signal.contribution === null ? " · No score until enough details are available" : ` · ${signal.contribution} score points`}</>}</dd></div>)}</dl><p className="muted text-xs">Available signals are reweighted. Approximate location is compared privately and never shown here.</p></div></details>
+          <MatchBreakdown signals={breakdown} category={item.category || "Not listed"} color={item.color || "Not listed"} date={item.occurred_at?.slice(0, 10) || "Not listed"} description={item.description || "No public description provided."}/>
         </li>)}</ol> : <p className="match-empty mt-4">No public found reports are ready to compare yet. Check again as listings are approved.</p>}</>}
     </section>}
   </article>;

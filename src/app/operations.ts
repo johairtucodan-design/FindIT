@@ -4,12 +4,12 @@ import { requireRole, requireUser } from "@/lib/auth";
 import { preparePhoto, MAX_PHOTO_BYTES } from "@/lib/photo";
 import { isUuid, publicListingDraft, type Report } from "@/lib/reports";
 export async function operate(operation: string, target: string, form: FormData) {
-  const admin=["set_retention","archive_report","seed_demo_cases"].includes(operation);
+  const admin=["set_retention","archive_report"].includes(operation);
   const staff=["moderate_report","receive_item","store_item","review_claim","release_item"].includes(operation);
   const {client,user}=admin?await requireRole(["admin"]):staff?await requireRole(["officer","admin"]):await requireUser();
   const text=(key:string)=>String(form.get(key)??"").trim();
   const confirmed=form.get("confirmed")==="on";
-  if(!["set_retention","seed_demo_cases"].includes(operation)&&!isUuid(target)) return {error:"Invalid reference."};
+  if(operation!=="set_retention"&&!isUuid(target)) return {error:"Invalid reference."};
   let args: Record<string,unknown>={target};
   let attachment: string | null=null;
   switch(operation) {
@@ -51,7 +51,6 @@ export async function operate(operation: string, target: string, form: FormData)
       args={days};
       break;
     }
-    case "seed_demo_cases": args={}; break;
     case "withdraw_report": break;
     default: return {error:"Unknown action."};
   }

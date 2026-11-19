@@ -10,12 +10,12 @@ import { Icon } from "./glyph";
 const info = {
   station: {
     label: "Station Operations", icon: "shield", title: "From report to return.",
-    text: "Review reports, record physical receipt, and manage handovers for your assigned demo station.",
+    text: "Review assigned reports, confirm physical receipt, and manage recorded custody.",
     features: [["01", "Receiving queue"], ["02", "Custody and claims"]],
   },
   admin: {
     label: "Administration", icon: "chart", title: "See the whole operation.",
-    text: "Oversee demo stations, review activity, and manage record retention in one place.",
+    text: "Manage FindIT access, review public map suggestions, and inspect operational activity.",
     features: [["01", "Station oversight"], ["02", "Audit and retention"]],
   },
 } as const;
