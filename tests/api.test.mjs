@@ -31,13 +31,14 @@ test("public report projection is accessible", async () => {
 });
 
 test("demo examples are public but excluded from real listings and keep their statuses", async () => {
-  const { data: demos, error } = await client.from("public_items").select("id,kind,status,is_demo").eq("is_demo", true);
+  const { data: demos, error } = await client.from("public_items").select("id,kind,status,is_demo,location_text").eq("is_demo", true);
   assert.equal(error, null);
   assert.equal(demos.length, 80);
   assert.equal(demos.filter(item => item.kind === "lost").length, 40);
   assert.equal(demos.filter(item => item.kind === "found").length, 40);
   assert.ok(demos.filter(item => item.kind === "lost").every(item => item.status === "open"));
   assert.ok(demos.filter(item => item.kind === "found").every(item => item.status === "pending_surrender"));
+  assert.ok(demos.every(item => item.location_text.startsWith("SyntheticZone")));
   assert.ok(demos.every(item => item.is_demo && !("photo_path" in item)));
   const { data: realItems, error: realError } = await client.from("public_items").select("id,is_demo").eq("is_demo", false);
   assert.equal(realError, null);

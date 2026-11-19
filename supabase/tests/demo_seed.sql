@@ -35,6 +35,9 @@ begin
   if exists (select 1 from public.items where is_demo and kind = 'found' and (status <> 'pending_surrender' or held_at_station_id is not null or publication_status <> 'approved')) then
     raise exception 'Demo found reports must remain pending surrender and have no custody station';
   end if;
+  if exists (select 1 from public.items where is_demo and coalesce(location_text, '') not like 'SyntheticZone%') then
+    raise exception 'Demo report areas must be clearly synthetic';
+  end if;
   if exists (select 1 from public.items where is_demo and (right(id::text, 12)::bigint between 1001 and 1040 or right(id::text, 12)::bigint between 2001 and 2040)
     and (photo_path is not null or private_details is not null or contact_method is not null)) then
     raise exception 'Demo reports must not contain private details, user uploads, or contact information';
