@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import LocationManager from "./location-manager";
 import { stationFromRow } from "@/app/(resident)/stations/directory";
@@ -6,7 +7,8 @@ import type { ManagedStationLocation } from "@/lib/station-locations";
 export const metadata = { title: "FindIT | Map locations" };
 
 export default async function StationLocations() {
-  const { client, profile } = await requireRole(["officer"]);
+  const { client, profile } = await requireRole(["officer", "admin"]);
+  if (profile.role === "admin") redirect("/manager#locations");
   const [{ data: rows, error }, { data: stationRows, error: stationError }] = await Promise.all([
     client.rpc("station_locations_for_staff"), client.rpc("station_directory"),
   ]);

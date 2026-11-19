@@ -36,7 +36,7 @@ export function publicListingDraft(report: Pick<Report, "title" | "description" 
   };
 }
 
-export const statusLabel = (status: string) => status === "pending_surrender" ? "Reported — Not Received" : status === "received_by_police" ? "Received" : status.split("_").map(word => word[0].toUpperCase() + word.slice(1)).join(" ");
+export const statusLabel = (status: string) => status === "pending_surrender" ? "Reported — Not Received" : status === "received_by_police" ? "Received by Police" : status.split("_").map(word => word[0].toUpperCase() + word.slice(1)).join(" ");
 export const editable = (status: string) => status === "open" || status === "pending_surrender";
 export const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
