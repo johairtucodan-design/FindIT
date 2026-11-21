@@ -7,12 +7,13 @@ import type { StationLocationPin } from "@/lib/station-locations";
 const cityCenter: [number, number] = [8.228, 124.245];
 const keyFor = (kind: "station" | "location", id: string) => `${kind}:${id}`;
 
-export default function StationMap({ stations, locations = [], selectedKey, active, selectedCoordinates = null, pickMode = false, onSelect, onPickCoordinate }: {
+export default function StationMap({ stations, locations = [], selectedKey, active, selectedCoordinates = null, selectedCoordinatesLabel = "Selected map point", pickMode = false, onSelect, onPickCoordinate }: {
   stations: readonly Station[];
   locations?: readonly StationLocationPin[];
   selectedKey: string | null;
   active: boolean;
   selectedCoordinates?: readonly [latitude: number, longitude: number] | null;
+  selectedCoordinatesLabel?: string;
   pickMode?: boolean;
   onSelect?: (key: string) => void;
   onPickCoordinate?: (point: [latitude: number, longitude: number]) => void;
@@ -102,27 +103,34 @@ export default function StationMap({ stations, locations = [], selectedKey, acti
         if (selected) marker.getElement()?.classList.add("is-selected");
       }
       const point = selectedCoordinatesRef.current;
-      if (pickModeRef.current && point) {
+      if (point) {
         const marker = L.marker([point[0], point[1]], {
-          title: "Selected location for review",
-          alt: "Selected map location",
+          title: selectedCoordinatesLabel,
+          alt: selectedCoordinatesLabel,
           keyboard: true,
+          draggable: pickModeRef.current,
           icon: L.divIcon({ className: "findit-picker-icon", html: '<span class="findit-picker-marker"></span>', iconSize: [30, 38], iconAnchor: [15, 15] }),
           zIndexOffset: 1200,
         }).addTo(instance);
+        if (pickModeRef.current) marker.on("dragend", () => {
+          const moved = marker.getLatLng();
+          onPickRef.current?.([moved.lat, moved.lng]);
+        });
         markers.current.set("picker", marker);
       }
       const selectedStation = selectedRef.current?.startsWith("station:")
         ? stationsRef.current.find(item => keyFor("station", item.id) === selectedRef.current) : null;
       const selectedLocation = selectedRef.current?.startsWith("location:")
         ? locationsRef.current.find(item => keyFor("location", item.id) === selectedRef.current) : null;
-      const target = point ? [point[0], point[1]] as [number, number] : (selectedStation?.coordinates.value as [number, number] | null) ??
-        (selectedLocation ? [selectedLocation.latitude, selectedLocation.longitude] as [number, number] : null);
+      const target = pickModeRef.current && point ? [point[0], point[1]] as [number, number] : (selectedStation?.coordinates.value as [number, number] | null) ??
+        (selectedLocation ? [selectedLocation.latitude, selectedLocation.longitude] as [number, number] : point ? [point[0], point[1]] as [number, number] : null);
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      instance.flyTo(target ?? cityCenter, target ? 15 : 12, { animate: !reduced, duration: reduced ? 0 : .45 });
+      if (!pickModeRef.current && point && target) {
+        instance.flyToBounds(L.latLngBounds(L.latLng(point[0], point[1]), L.latLng(target[0], target[1])), { padding: [36, 36], maxZoom: 14, animate: !reduced, duration: reduced ? 0 : .45 });
+      } else instance.flyTo(target ?? cityCenter, target ? 15 : 12, { animate: !reduced, duration: reduced ? 0 : .45 });
     };
     redrawRef.current();
-  }, [stations, locations, selectedKey, selectedCoordinates, pickMode]);
+  }, [stations, locations, selectedKey, selectedCoordinates, selectedCoordinatesLabel, pickMode]);
 
   useEffect(() => {
     const instance = map.current;

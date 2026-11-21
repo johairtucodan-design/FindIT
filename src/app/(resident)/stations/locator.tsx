@@ -4,17 +4,10 @@ import { useState } from "react";
 import { Icon } from "@/app/glyph";
 import type { SourcedField, Station } from "./directory";
 import type { StationLocationPin } from "@/lib/station-locations";
+import { isGeoPoint, rankNearby, type GeoPoint } from "@/lib/geospatial";
 import StationMap from "./station-map";
 
 type DirectoryFilter = "all" | "mapped" | "review";
-
-function distanceKm(from: readonly [number, number], to: readonly [number, number]) {
-  const radians = Math.PI / 180;
-  const lat1 = from[0] * radians, lon1 = from[1] * radians;
-  const lat2 = to[0] * radians, lon2 = to[1] * radians;
-  const a = Math.sin((lat2 - lat1) / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin((lon2 - lon1) / 2) ** 2;
-  return 12742 * Math.asin(Math.sqrt(Math.min(1, a)));
-}
 
 function needsLocationReview(station: Station) {
   return station.address.status === "conflict" || !station.coordinates.value;
@@ -42,28 +35,52 @@ export default function Locator({ stations, locations }: { stations: readonly St
   const [filter, setFilter] = useState<DirectoryFilter>("all");
   const [position, setPosition] = useState<[number, number] | null>(null);
   const [message, setMessage] = useState("");
+  const [choosingOrigin, setChoosingOrigin] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(stations[0] ? `station:${stations[0].id}` : locations[0] ? `location:${locations[0].id}` : null);
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
   const term = query.trim().toLowerCase();
-  const results = stations.filter(station => {
+  const filteredStations = stations.filter(station => {
     const searchText = [station.name.value, station.address.value, ...(station.phone.value ?? [])].filter(Boolean).join(" ").toLowerCase();
     return (!term || searchText.includes(term)) && (filter === "all" || (filter === "mapped" ? Boolean(station.coordinates.value) : needsLocationReview(station)));
   });
-  if (position) results.sort((a, b) => (a.coordinates.value ? distanceKm(position, a.coordinates.value) : Infinity) - (b.coordinates.value ? distanceKm(position, b.coordinates.value) : Infinity));
   const visibleLocations = locations.filter(pin => !term || `${pin.name} ${pin.station_name} ${pin.description}`.toLowerCase().includes(term));
+  const nearbyTargets = [
+    ...filteredStations.map(station => ({ key: `station:${station.id}`, name: station.name.value ?? "Police station reference", type: "Station" as const, point: station.coordinates.value })),
+    ...visibleLocations.map(pin => ({ key: `location:${pin.id}`, name: pin.name, type: "FindIT-reviewed suggestion" as const, point: [pin.latitude, pin.longitude] as const })),
+  ];
+  const closest = position ? rankNearby(position, nearbyTargets, target => target.point)[0] ?? null : null;
+  const stationDistances = new Map((position ? rankNearby(position, filteredStations, station => station.coordinates.value) : []).map(({ entry, distanceKm }) => [entry.id, distanceKm] as const));
+  const locationDistances = new Map((position ? rankNearby(position, visibleLocations, pin => [pin.latitude, pin.longitude] as const) : []).map(({ entry, distanceKm }) => [entry.id, distanceKm] as const));
+  const results = position ? [...filteredStations].sort((a, b) => (stationDistances.get(a.id) ?? Infinity) - (stationDistances.get(b.id) ?? Infinity)) : filteredStations;
+  const orderedLocations = position ? [...visibleLocations].sort((a, b) => (locationDistances.get(a.id) ?? Infinity) - (locationDistances.get(b.id) ?? Infinity)) : visibleLocations;
   const selectedLocation = visibleLocations.find(pin => selectedKey === `location:${pin.id}`) ?? null;
   const selected = selectedKey?.startsWith("station:") ? results.find(station => selectedKey === `station:${station.id}`) ?? null : null;
-  const activeStation = selected ?? (selectedLocation ? null : results[0] ?? null);
-  const activeKey = selectedLocation ? `location:${selectedLocation.id}` : activeStation ? `station:${activeStation.id}` : visibleLocations[0] ? `location:${visibleLocations[0].id}` : null;
+  const activeStation = selected ?? (selectedLocation || position ? null : results[0] ?? null);
+  const activeKey = selectedLocation ? `location:${selectedLocation.id}` : activeStation ? `station:${activeStation.id}` : position ? closest?.entry.key ?? null : orderedLocations[0] ? `location:${orderedLocations[0].id}` : null;
   const pointCount = results.filter(station => station.coordinates.value).length;
 
+  function useOrigin(value: unknown) {
+    if (!isGeoPoint(value)) {
+      setMessage("We couldn’t read a valid map point. Choose a point on the map or try again.");
+      return;
+    }
+    const point: GeoPoint = [value[0], value[1]];
+    const nearest = rankNearby(point, nearbyTargets, target => target.point)[0];
+    setPosition([point[0], point[1]]);
+    setChoosingOrigin(false);
+    setSelectedKey(nearest?.entry.key ?? null);
+    setMobileView("map");
+    setMessage(nearest
+      ? `Closest public listing: ${nearest.entry.name}, ${nearest.distanceKm.toFixed(1)} km away. Straight-line estimate; this starting point stays in your browser.`
+      : "No public listings with verified map pins match the current search. Clear the search or use the station list.");
+  }
+
   function locate() {
-    if (!navigator.geolocation) return setMessage("Location is unavailable. Search by station instead.");
+    if (!navigator.geolocation) return setMessage("Location sharing isn’t available here. Choose a starting point on the map instead.");
     setMessage("Requesting location…");
     navigator.geolocation.getCurrentPosition(({ coords }) => {
-      setPosition([coords.latitude, coords.longitude]);
-      setMessage("Your location stays on this page. Distances are straight-line estimates.");
-    }, () => setMessage("Location denied or unavailable. Search by station instead."), { timeout: 10000 });
+      useOrigin([coords.latitude, coords.longitude]);
+    }, () => setMessage("Location was denied or unavailable. Choose a starting point on the map instead."), { timeout: 10000 });
   }
 
   return <>
@@ -71,9 +88,12 @@ export default function Locator({ stations, locations }: { stations: readonly St
       <div className="station-search-row">
         <label>Search stations<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Station name, area, or phone"/></label>
         <label>Show<select value={filter} onChange={event => setFilter(event.target.value as DirectoryFilter)}><option value="all">All public listings</option><option value="mapped">With sourced map pin</option><option value="review">Needs location verification</option></select></label>
-        <button className="button secondary" type="button" onClick={locate}><Icon name="pin" size={18}/> Use my location</button>
+        <div className="station-origin-actions"><button className="button secondary" type="button" onClick={locate}><Icon name="pin" size={18}/> Use my location</button><button className="button secondary" type="button" aria-pressed={choosingOrigin} onClick={() => { setChoosingOrigin(value => !value); setMobileView("map"); setMessage(choosingOrigin ? "Map selection cancelled." : "Tap or drag the orange marker on the map to choose a starting point."); }}>{choosingOrigin ? "Cancel map pick" : "Choose on map"}</button>{position && <button className="text-link" type="button" onClick={() => { setPosition(null); setChoosingOrigin(false); setMessage("Starting point cleared."); }}>Clear point</button>}</div>
       </div>
       <p className="muted mt-3 text-sm" role="status">{message || `${results.length} public listings · ${pointCount} sourced station pins · ${visibleLocations.length} reviewed map suggestions`}</p>
+      {position && closest && <div className="nearby-result"><div><p className="eyebrow">CLOSEST PUBLIC MAP LISTING</p><strong>{closest.entry.name}</strong><span>{closest.distanceKm.toFixed(1)} km · approximate straight-line distance · {closest.entry.type}</span></div><button className="button secondary" type="button" onClick={() => { setSelectedKey(closest.entry.key); setMobileView("map"); }}>Show on map</button></div>}
+      {position && !closest && <p className="station-empty mt-3">No verified public map pins are available for the current search.</p>}
+      {choosingOrigin && <p className="station-map-pick-hint" role="note">Tap the map to place the starting point. Drag the orange marker to fine-tune it.</p>}
     </section>
 
     <div className="station-view-toggle" role="group" aria-label="Station directory view">
@@ -93,20 +113,20 @@ export default function Locator({ stations, locations }: { stations: readonly St
               <span className="station-option-top"><span className="station-number">{String(index + 1).padStart(2, "0")}</span><span className="station-type">{station.kind === "headquarters" ? "City headquarters" : "Police station"}</span><span className={`station-status${station.address.status === "conflict" ? " has-conflict" : ""}`}>{state}</span></span>
               <strong>{station.name.value}</strong><span className="station-address">{address}</span>
               <span className="station-address">{station.phone.value?.[0] ?? missingLabel(station.phone, "Phone")}</span>
-              {position && station.coordinates.value && <span className="station-distance">{distanceKm(position, station.coordinates.value).toFixed(1)} km away · straight-line estimate</span>}
+              {position && (stationDistances.has(station.id) ? <span className="station-distance">{stationDistances.get(station.id)?.toFixed(1)} km away · straight-line estimate</span> : <span className="station-address">Distance unavailable · no verified map pin</span>)}
               <span className="station-open">{active ? "Selected details" : "View station"}<Icon name="arrow" size={16}/></span>
             </button>
           </li>;
         })}</ul> : <p className="station-empty">No station listings match. Try a shorter search or another filter.</p>}
-        {visibleLocations.length > 0 && <ul className="station-pin-list"><li><h3>FindIT-reviewed map suggestions</h3><p className="muted text-xs">These are public map references, not station-approved handover locations.</p></li>{visibleLocations.map(pin => {
+        {orderedLocations.length > 0 && <ul className="station-pin-list"><li><h3>FindIT-reviewed map suggestions</h3><p className="muted text-xs">These are public map references, not station-approved handover locations.</p></li>{orderedLocations.map(pin => {
           const active = activeKey === `location:${pin.id}`;
-          return <li key={pin.id}><button type="button" className={`station-pin-option${active ? " is-selected" : ""}`} aria-pressed={active} onClick={() => { setSelectedKey(`location:${pin.id}`); setMobileView("map"); }}><strong>{pin.name}</strong><span>{pin.station_name} · FindIT-reviewed suggestion</span><small>{pin.description}</small></button></li>;
+          return <li key={pin.id}><button type="button" className={`station-pin-option${active ? " is-selected" : ""}`} aria-pressed={active} onClick={() => { setSelectedKey(`location:${pin.id}`); setMobileView("map"); }}><strong>{pin.name}</strong><span>{pin.station_name} · FindIT-reviewed suggestion</span>{position && locationDistances.has(pin.id) && <span className="station-distance">{locationDistances.get(pin.id)?.toFixed(1)} km away · straight-line estimate</span>}<small>{pin.description}</small></button></li>;
         })}</ul>}
       </section>
 
       <section className={`station-map-pane${mobileView === "map" ? " is-mobile-active" : ""}`} aria-label="Selected station and map">
         <div className="station-map-heading"><div><p className="eyebrow">INTERACTIVE STATION MAP</p><h2>{selectedLocation?.name ?? activeStation?.name.value ?? "Station map"}</h2><p>{selectedLocation ? selectedLocation.station_name : activeStation?.address.value ?? (activeStation ? missingLabel(activeStation.address, "Address") : "Search the list to find public station information.")}</p></div><span className={`map-pin-status${selectedLocation || activeStation?.coordinates.value ? " is-pinned" : ""}`}><i/>{selectedLocation ? "Reviewed map suggestion" : activeStation?.coordinates.value ? "Sourced map pin" : activeStation ? missingLabel(activeStation.coordinates, "Map pin") : "No selected location"}</span></div>
-        <div className="station-map-frame"><StationMap stations={results} locations={locations} selectedKey={activeKey} active={mobileView === "map"} onSelect={key => { setSelectedKey(key); setMobileView("map"); }}/></div>
+        <div className={`station-map-frame${choosingOrigin ? " is-picking" : ""}`}><StationMap stations={results} locations={locations} selectedKey={activeKey} selectedCoordinates={position} selectedCoordinatesLabel="Nearby search starting point" pickMode={choosingOrigin} active={mobileView === "map"} onSelect={key => { setSelectedKey(key); setMobileView("map"); }} onPickCoordinate={useOrigin}/></div>
         {selectedLocation && <div className="station-selected-details">
           <div className="station-details-title"><div><p className="eyebrow">FINDIT-REVIEWED SUGGESTION</p><h3>{selectedLocation.name}</h3></div><span>Not station-approved</span></div>
           <dl className="station-details-grid"><div className="station-detail-row"><dt>Station reference</dt><dd>{selectedLocation.station_name}</dd></div><div className="station-detail-row"><dt>Public description</dt><dd>{selectedLocation.description}</dd></div><div className="station-detail-row"><dt>Visit instructions</dt><dd>{selectedLocation.visit_instructions}</dd></div></dl>

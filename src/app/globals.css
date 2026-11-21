@@ -122,6 +122,14 @@ input[aria-invalid=true], textarea[aria-invalid=true] { border-color: #b91c1c; }
 .station-search-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(12rem,.5fr) auto; gap:1rem; align-items:end; }
 .station-search-row label { display:grid; gap:.45rem; font-size:.9rem; font-weight:650; }
 .station-search-row .button { min-height:3.05rem; }
+.station-origin-actions { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
+.nearby-result { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-top:.8rem; padding:.8rem 1rem; border:1px solid #cfe8dc; border-radius:.8rem; background:#f2faf5; }
+.nearby-result > div { display:grid; gap:.15rem; min-width:0; }
+.nearby-result .eyebrow { margin:0; color:#17634f; font-size:.62rem; }
+.nearby-result strong { color:var(--ink); font-size:.92rem; }
+.nearby-result span,.station-map-pick-hint { color:var(--muted); font-size:.75rem; line-height:1.45; }
+.station-map-pick-hint { margin-top:.5rem; }
+.station-map-frame.is-picking .leaflet-container { cursor:crosshair; }
 .station-view-toggle { display:none; }
 .station-explorer { display:grid; grid-template-columns:minmax(18rem,.78fr) minmax(0,1.4fr); gap:1rem; align-items:start; margin-top:1rem; }
 .station-list-pane,.station-map-pane { min-width:0; border:1px solid var(--line); border-radius:var(--radius); background:#fff; box-shadow:0 12px 28px #23164d0a; }
@@ -406,6 +414,8 @@ input[aria-invalid=true], textarea[aria-invalid=true] { border-color: #b91c1c; }
   .map-pin { width:2.15rem; }
   .station-search-row { grid-template-columns:1fr; }
   .station-search-row .button { justify-self:start; }
+  .station-origin-actions { align-items:stretch; }
+  .nearby-result { align-items:flex-start; flex-direction:column; }
   .station-view-toggle { display:grid; grid-template-columns:1fr 1fr; gap:.3rem; margin-top:.8rem; padding:.25rem; border:1px solid var(--line); border-radius:.75rem; background:#fff; }
   .station-view-toggle button { min-height:2.5rem; border-radius:.5rem; color:var(--muted); font-size:.82rem; font-weight:750; }
   .station-view-toggle button[aria-pressed=true] { color:var(--primary); background:var(--soft); }
