@@ -2,11 +2,13 @@ import { redirect } from "next/navigation";
 import { getViewer } from "@/lib/supabase/server";
 import AuthForm from "./auth-form";
 import { Icon } from "@/app/glyph";
+import { afterAuthReportPath } from "@/lib/station-selection";
 
-export default async function AuthPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { error } = await searchParams;
+export default async function AuthPage({ searchParams }: { searchParams: Promise<{ error?: string; next?: string }> }) {
+  const { error, next } = await searchParams;
+  const nextPath = afterAuthReportPath(next);
   const { user } = await getViewer();
-  if (user && error !== "signout") redirect("/my");
+  if (user && error !== "signout") redirect(nextPath ?? "/my");
   return <div className="auth-shell">
     <aside className="auth-aside">
       <span className="quick-icon"><Icon name="shield"/></span>
@@ -14,6 +16,6 @@ export default async function AuthPage({ searchParams }: { searchParams: Promise
       <p className="auth-tagline">A place to keep track.</p>
       <p>Sign in to manage your reports and follow ownership claims privately.</p>
     </aside>
-    <AuthForm initialError={error === "confirmation" ? "Confirmation failed or expired. Try signing in or registering again." : error === "signout" ? "Sign out failed. Please try again." : undefined} />
+    <AuthForm initialNext={nextPath ?? undefined} initialError={error === "confirmation" ? "Confirmation failed or expired. Try signing in or registering again." : error === "signout" ? "Sign out failed. Please try again." : undefined} />
   </div>;
 }

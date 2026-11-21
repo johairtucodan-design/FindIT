@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Portal } from "@/lib/staff";
 import { authenticate } from "./actions";
 
-export default function AuthForm({ initialError, portal }: { initialError?: string; portal?: Portal }) {
+export default function AuthForm({ initialError, initialNext, portal }: { initialError?: string; initialNext?: string; portal?: Portal }) {
   const [register, setRegister] = useState(false);
   const [message, setMessage] = useState<{ error?: string; success?: string }>({ error: initialError });
   const [pending, setPending] = useState(false);
@@ -24,6 +24,7 @@ export default function AuthForm({ initialError, portal }: { initialError?: stri
       <p className="muted mt-3">{portal ? "Use your FindIT email or demo username and password." : "Any citizen can report a lost or found item."}</p>
       <form onSubmit={submit} className="form-grid mt-7" noValidate>
         <input type="hidden" name="mode" value={portal ?? (register ? "register" : "login")} />
+        {!portal && initialNext && <input type="hidden" name="next" value={initialNext} />}
         {register && <label className="auth-field"><span>Full name</span><input name="full_name" autoComplete="name" placeholder="Your name" required maxLength={150} /></label>}
         <label className="auth-field"><span>{register ? "Email address" : "Email or demo username"}</span><input type={register ? "email" : "text"} name="email" autoComplete="username" placeholder={register ? "you@example.com" : "Email or findituser"} required maxLength={254} /></label>
         <label className="auth-field"><span>Password</span><input type="password" name="password" autoComplete={register ? "new-password" : "current-password"} placeholder={register ? "At least 8 characters" : "Enter your password"} required minLength={register ? 8 : undefined} />{register && <span className="report-hint">Use at least 8 characters. You may need to confirm your email.</span>}</label>

@@ -3,17 +3,17 @@
 import { useEffect, useRef } from "react";
 import type { Station } from "./directory";
 import type { StationLocationPin } from "@/lib/station-locations";
+import { stationSelectionKey } from "@/lib/station-selection";
 
 const cityCenter: [number, number] = [8.228, 124.245];
-const keyFor = (kind: "station" | "location", id: string) => `${kind}:${id}`;
-
-export default function StationMap({ stations, locations = [], selectedKey, active, selectedCoordinates = null, selectedCoordinatesLabel = "Selected map point", pickMode = false, onSelect, onPickCoordinate }: {
+export default function StationMap({ stations, locations = [], selectedKey, active, selectedCoordinates = null, selectedCoordinatesLabel = "Selected map point", routeCoordinates = null, pickMode = false, onSelect, onPickCoordinate }: {
   stations: readonly Station[];
   locations?: readonly StationLocationPin[];
   selectedKey: string | null;
   active: boolean;
   selectedCoordinates?: readonly [latitude: number, longitude: number] | null;
   selectedCoordinatesLabel?: string;
+  routeCoordinates?: readonly (readonly [latitude: number, longitude: number])[] | null;
   pickMode?: boolean;
   onSelect?: (key: string) => void;
   onPickCoordinate?: (point: [latitude: number, longitude: number]) => void;
@@ -26,6 +26,8 @@ export default function StationMap({ stations, locations = [], selectedKey, acti
   const locationsRef = useRef(locations);
   const selectedRef = useRef(selectedKey);
   const selectedCoordinatesRef = useRef(selectedCoordinates);
+  const routeCoordinatesRef = useRef(routeCoordinates);
+  const routeLine = useRef<import("leaflet").Polyline | null>(null);
   const onSelectRef = useRef(onSelect);
   const onPickRef = useRef(onPickCoordinate);
   const pickModeRef = useRef(pickMode);
@@ -34,6 +36,7 @@ export default function StationMap({ stations, locations = [], selectedKey, acti
   locationsRef.current = locations;
   selectedRef.current = selectedKey;
   selectedCoordinatesRef.current = selectedCoordinates;
+  routeCoordinatesRef.current = routeCoordinates;
   onSelectRef.current = onSelect;
   onPickRef.current = onPickCoordinate;
   pickModeRef.current = pickMode;
@@ -74,10 +77,18 @@ export default function StationMap({ stations, locations = [], selectedKey, acti
       if (!size.x || !size.y) return;
       markers.current.forEach(marker => marker.remove());
       markers.current.clear();
+      routeLine.current?.remove();
+      routeLine.current = null;
+      const routePoints = routeCoordinatesRef.current;
+      if (routePoints && routePoints.length > 1) {
+        routeLine.current = L.polyline(routePoints.map(([latitude, longitude]) => L.latLng(latitude, longitude)), {
+          color: "#11786e", weight: 6, opacity: .9, lineCap: "round", lineJoin: "round",
+        }).addTo(instance);
+      }
       for (const station of stationsRef.current) {
         const point = station.coordinates.value;
         if (!point) continue;
-        const key = keyFor("station", station.id), selected = key === selectedRef.current;
+        const key = stationSelectionKey("station", station.id), selected = key === selectedRef.current;
         const marker = L.marker([point[0], point[1]], {
           title: station.name.value ?? "Police station reference",
           alt: `Select ${station.name.value ?? "police station reference"}`,
@@ -90,7 +101,7 @@ export default function StationMap({ stations, locations = [], selectedKey, acti
         if (selected) marker.getElement()?.classList.add("is-selected");
       }
       for (const location of locationsRef.current) {
-        const key = keyFor("location", location.id), selected = key === selectedRef.current;
+        const key = stationSelectionKey("location", location.id), selected = key === selectedRef.current;
         const marker = L.marker([location.latitude, location.longitude], {
           title: location.name,
           alt: `Select suggested location ${location.name}`,
@@ -119,9 +130,14 @@ export default function StationMap({ stations, locations = [], selectedKey, acti
         markers.current.set("picker", marker);
       }
       const selectedStation = selectedRef.current?.startsWith("station:")
-        ? stationsRef.current.find(item => keyFor("station", item.id) === selectedRef.current) : null;
+        ? stationsRef.current.find(item => stationSelectionKey("station", item.id) === selectedRef.current) : null;
       const selectedLocation = selectedRef.current?.startsWith("location:")
-        ? locationsRef.current.find(item => keyFor("location", item.id) === selectedRef.current) : null;
+        ? locationsRef.current.find(item => stationSelectionKey("location", item.id) === selectedRef.current) : null;
+      if (routePoints && routePoints.length > 1) {
+        const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        instance.flyToBounds(L.latLngBounds(routePoints.map(([latitude, longitude]) => L.latLng(latitude, longitude))), { padding: [42, 42], maxZoom: 15, animate: !reduced, duration: reduced ? 0 : .45 });
+        return;
+      }
       const target = pickModeRef.current && point ? [point[0], point[1]] as [number, number] : (selectedStation?.coordinates.value as [number, number] | null) ??
         (selectedLocation ? [selectedLocation.latitude, selectedLocation.longitude] as [number, number] : point ? [point[0], point[1]] as [number, number] : null);
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -130,7 +146,7 @@ export default function StationMap({ stations, locations = [], selectedKey, acti
       } else instance.flyTo(target ?? cityCenter, target ? 15 : 12, { animate: !reduced, duration: reduced ? 0 : .45 });
     };
     redrawRef.current();
-  }, [stations, locations, selectedKey, selectedCoordinates, selectedCoordinatesLabel, pickMode]);
+  }, [stations, locations, selectedKey, selectedCoordinates, selectedCoordinatesLabel, routeCoordinates, pickMode]);
 
   useEffect(() => {
     const instance = map.current;

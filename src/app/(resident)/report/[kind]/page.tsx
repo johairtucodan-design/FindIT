@@ -1,16 +1,19 @@
-import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { notFound, redirect } from "next/navigation";
+import { getViewer } from "@/lib/supabase/server";
 import { editable, isUuid, type Report } from "@/lib/reports";
 import ReportForm from "../report-form";
 
 export default async function ReportPage({ params, searchParams }: {
   params: Promise<{ kind: string }>;
-  searchParams: Promise<{ edit?: string }>;
+  searchParams: Promise<{ edit?: string; station?: string }>;
 }) {
   const { kind } = await params;
   if (kind !== "lost" && kind !== "found") notFound();
-  const { client, user } = await requireUser();
-  const { edit } = await searchParams;
+  const { edit, station } = await searchParams;
+  const stationId = typeof station === "string" && isUuid(station) ? station : null;
+  const returnTo = `/report/${kind}${stationId ? `?station=${encodeURIComponent(stationId)}` : ""}`;
+  const { client, user } = await getViewer();
+  if (!user) redirect(`/auth?next=${encodeURIComponent(returnTo)}`);
   let report: Report | undefined;
   if (edit !== undefined) {
     if (!isUuid(edit)) notFound();
@@ -19,5 +22,9 @@ export default async function ReportPage({ params, searchParams }: {
     report = data?.[0];
     if (!report || report.reporter_id !== user.id || report.kind !== kind || !editable(report.status)) notFound();
   }
-  return <ReportForm kind={kind} report={report} />;
+  const { data: directory } = await client.rpc("station_directory");
+  const stations = (directory ?? []).filter((row: { type?: string }) => row.type === "public_reference_police_station").map((row: { id: string; name: string }) => ({ id: row.id, name: row.name }));
+  const existingStation = report?.preferred_station_id ?? null;
+  const selectedStation = stationId && stations.some((row: { id: string }) => row.id === stationId) ? stationId : existingStation;
+  return <ReportForm kind={kind} report={report} stations={stations} initialStationId={selectedStation} />;
 }

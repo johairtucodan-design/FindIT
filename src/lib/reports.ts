@@ -16,6 +16,7 @@ export type Report = {
   private_details: string | null;
   contact_method: string | null;
   intended_station_id: string | null;
+  preferred_station_id: string | null;
   held_at_station_id: string | null;
   storage_location: string | null;
   publication_status: string;

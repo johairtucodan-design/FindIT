@@ -27,12 +27,13 @@ export async function saveReport(kind: string, id: string | null, form: FormData
   const { data: profile } = await client.from("profiles").select("phone").eq("id", user.id).maybeSingle();
   const contactMethod = accountContact(profile?.phone, user.email);
   if (!contactMethod) return { errors: { form: "Add a contact email or phone number to your account before reporting an item." } };
-  const submittedStation = form.get("intended_station_id");
-  const station = submittedStation === null ? existing?.intended_station_id ?? "" : String(submittedStation);
-  if (station && !isUuid(station)) return { errors: { intended_station_id: "Choose a valid station." } };
-  if (station && station !== existing?.intended_station_id) {
-    const { data: selectedStation, error } = await client.from("stations").select("is_demo,is_approved").eq("id", station).maybeSingle();
-    if (error || !selectedStation?.is_demo || !selectedStation.is_approved) return { errors: { intended_station_id: "Only existing demo assignments can be preserved. Public references do not represent a handover station." } };
+  const submittedStation = form.get("preferred_station_id");
+  const preferredStation = submittedStation === null ? existing?.preferred_station_id ?? "" : String(submittedStation).trim();
+  if (preferredStation && !isUuid(preferredStation)) return { errors: { preferred_station_id: "Choose a valid public reference station." } };
+  if (preferredStation) {
+    const { data: directory, error: directoryError } = await client.rpc("station_directory");
+    const eligible = (directory ?? []).some((entry: { id?: string; type?: string }) => entry.id === preferredStation && entry.type === "public_reference_police_station");
+    if (directoryError || !eligible) return { errors: { preferred_station_id: "Choose an available public reference station from the list." } };
   }
   let photoPath: string | undefined;
   const photo = form.get("photo");
@@ -40,7 +41,7 @@ export async function saveReport(kind: string, id: string | null, form: FormData
     try { photoPath = await uploadReportPhoto(client.storage.from("item-photos"), user.id, photo); }
     catch (error) { return { errors: { photo: error instanceof Error ? error.message : "Photo could not be read." } }; }
   }
-  const payload = { ...values, occurred_at, contact_method: contactMethod, intended_station_id: station||null, ...(photoPath ? { photo_path: photoPath } : {}) };
+  const payload = { ...values, occurred_at, contact_method: contactMethod, preferred_station_id: preferredStation || null, ...(photoPath ? { photo_path: photoPath } : {}) };
   const query = id ? client.from("items").update(payload).eq("id", id) : client.from("items").insert({ ...payload, kind });
   const { data, error } = await query.select("id").single();
   if (error || !data) {

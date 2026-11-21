@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { codespacesHost } from "@/lib/codespaces.mjs";
 import { canOpenPortal, portals, type Portal } from "@/lib/staff";
+import { afterAuthReportPath } from "@/lib/station-selection";
 
 export async function resolveLoginEmail(login: string) {
   const aliases: Record<string, string | undefined> = {
@@ -22,6 +23,7 @@ export async function authenticate(form: FormData) {
   const mode = form.get("mode");
   const register = mode === "register";
   const portal = mode === "station" || mode === "admin" ? mode : null;
+  const nextPath = portal ? null : afterAuthReportPath(form.get("next"));
   const email = register ? login : await resolveLoginEmail(login);
   const fullName = String(form.get("full_name") ?? "").trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !password) return { error: "Enter a valid email or demo username and password." };
@@ -33,7 +35,7 @@ export async function authenticate(form: FormData) {
     const origin = host ? `https://${host}` : (await headers()).get("origin");
     const { data, error } = await client.auth.signUp({ email, password, options: {
       data: { full_name: fullName },
-      ...(origin ? { emailRedirectTo: `${origin}/auth/callback` } : {}),
+      ...(origin ? { emailRedirectTo: (() => { const url = new URL("/auth/callback", origin); if (nextPath) url.searchParams.set("next", nextPath); return url.toString(); })() } : {}),
     } });
     if (error) return { error: error.code === "over_email_send_rate_limit" ? "Too many confirmation emails. Please wait before trying again." : "Registration failed. Check your details, or try signing in if you already have an account." };
     if (!data.session) return { success: "Check your email to confirm your account, then sign in. If you already registered, use Sign in." };
@@ -50,7 +52,7 @@ export async function authenticate(form: FormData) {
       return {error:!userId || profileError ? "Workspace access couldn’t be checked. Try signing in again." : portal === "admin" ? "This account does not have administrator access." : "This account does not have station officer access."};
     }
   }
-  redirect(portal ? portals[portal].home : "/my");
+  redirect(portal ? portals[portal].home : nextPath ?? "/my");
 }
 
 export async function requestPasswordLink(login: string) {
