@@ -31,7 +31,7 @@ export default function LocationManager({ station, locations }: { station: Stati
 
   return <div className="station-location-layout">
     <section aria-label="Assigned station map locations">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-3"><h2 className="text-lg font-bold">Your map locations</h2><button className="button secondary" type="button" onClick={startNew}>Add a location</button></div>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3"><h2 className="text-lg font-bold">Your station map pins</h2><button className="button secondary" type="button" onClick={startNew}>Add a map pin</button></div>
       {!locations.length ? <p className="panel muted">No map pins yet. Choose a point and publish your first public reference.</p> : <ul className="station-location-list">{locations.map(pin => <li className="station-location-card" key={pin.id}>
         <div className="flex flex-wrap items-center justify-between gap-2"><h3>{pin.name}</h3><span className={`location-status ${pin.status}`}>{statusText(pin)}</span></div><p>{pin.station_name} · {pin.latitude.toFixed(5)}, {pin.longitude.toFixed(5)}</p><p>{pin.description}</p>
         <div className="flex flex-wrap gap-2"><button className="button secondary" type="button" onClick={() => startEdit(pin)}>Edit pin</button>{pin.is_active&&<WorkflowForm action={deactivateStationLocation.bind(null,pin.id)} label="Deactivate" ><label><span><input name="confirmed" type="checkbox" required/> Remove this pin from public display</span></label></WorkflowForm>}</div>
@@ -39,7 +39,7 @@ export default function LocationManager({ station, locations }: { station: Stati
     </section>
     <section className="panel location-pin-form" aria-label="Create or edit a public map pin">
       <p className="eyebrow">{editing ? "EDIT PUBLIC MAP PIN" : "NEW PUBLIC MAP PIN"}</p><h2 className="text-lg font-bold">{editing ? editing.name : "Place a pin"}</h2>
-      <p className="muted mt-2 text-sm">Click or tap to place the orange marker, then drag it to adjust. You can also enter coordinates below. Publishing makes this pin visible on FindIT immediately. Don’t describe unverified station services or receiving hours.</p>
+      <p className="muted mt-2 text-sm">Click or tap to place the orange marker, then drag it to adjust. You can also enter coordinates below. Publishing makes this public-reference pin visible on FindIT immediately; it does not add a station-directory record. Don’t describe unverified station services or receiving hours.</p>
       <div className="station-map-frame location-pin-map"><StationMap stations={station ? [station] : []} locations={locations} selectedKey={editing ? `location:${editing.id}` : station ? `station:${station.id}` : null} selectedCoordinates={point} selectedCoordinatesLabel="Proposed map pin" active pickMode onSelect={key => { const pin=locations.find(item=>`location:${item.id}`===key); if(pin) startEdit(pin); }} onPickCoordinate={([latitude,longitude])=>setCoordinates([latitude.toFixed(6),longitude.toFixed(6)])}/></div>
       <WorkflowForm action={action} label={editing ? "Save and publish changes" : "Publish pin to map"}>
         <label>Location name<input name="name" maxLength={120} required value={values.name} onChange={event=>setValues({...values,name:event.target.value})} placeholder="Example: Public entrance"/></label>

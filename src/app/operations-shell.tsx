@@ -4,7 +4,7 @@ import { signOutOfPortal } from "./(resident)/auth/actions";
 import { portals, type Portal } from "@/lib/staff";
 
 const menus = {
-  station: [["/security", "Receiving queue", "list"], ["/security?tab=review", "Publication review", "list"], ["/security?tab=inventory", "Custody inventory", "box"], ["/security/locations", "Map locations", "pin"]],
+  station: [["/security", "Receiving queue", "list"], ["/security?tab=review", "Publication review", "list"], ["/security?tab=inventory", "Custody inventory", "box"], ["/security/locations", "Add map pin", "pin"]],
   admin: [["/manager", "Overview", "chart"], ["/manager#users", "User access", "shield"], ["/manager#location-activity", "Map activity", "pin"], ["/manager#retention", "Retention review", "archive"]],
 } as const;
 
