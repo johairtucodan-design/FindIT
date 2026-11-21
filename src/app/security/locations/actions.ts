@@ -27,7 +27,7 @@ async function saveLocation(target: string | null, form: FormData) {
     : await client.rpc("propose_station_location", { p_station: profile.station_id, p_name: value.name, p_description: value.description, p_visit_instructions: value.visitInstructions, p_latitude: value.latitude, p_longitude: value.longitude });
   if (error) return { error: error.code === "42501" ? "This pin is outside your assigned station access." : error.message || "The location could not be saved." };
   revalidatePath("/security/locations"); revalidatePath("/manager"); revalidatePath("/stations");
-  return { success: target ? "Location updated and sent for review." : "Location proposed. It stays private until an admin approves it." };
+  return { success: target ? "Map pin updated and published." : "Map pin published and visible on FindIT." };
 }
 
 export async function proposeStationLocation(form: FormData) {

@@ -10,7 +10,7 @@ export type StationLocationPin = {
 };
 
 export type ManagedStationLocation = StationLocationPin & {
-  status: "pending_review" | "approved" | "rejected";
+  status: "pending_review" | "approved" | "rejected" | "published";
   is_active: boolean;
   created_at: string;
   reviewed_at: string | null;

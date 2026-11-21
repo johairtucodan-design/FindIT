@@ -4,7 +4,7 @@ import { getRoleProfile } from "@/lib/auth";
 export default async function AccessDenied() {
   const profile = await getRoleProfile();
   const message = profile?.role === "admin"
-    ? "You’re signed in as an administrator. Use the Admin console for map review, or Station Ops for receiving and custody."
+    ? "You’re signed in as an administrator. Use the Admin console for map activity, or Station Ops for receiving and custody."
     : profile?.role === "officer" && !profile.station_id
       ? "Your account has Staff access, but no station is assigned yet. Ask a FindIT administrator to assign an approved public reference."
       : profile?.role === "citizen"

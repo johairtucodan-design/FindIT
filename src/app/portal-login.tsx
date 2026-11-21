@@ -15,7 +15,7 @@ const info = {
   },
   admin: {
     label: "Administration", icon: "chart", title: "See the whole operation.",
-    text: "Manage FindIT access, review public map suggestions, and inspect operational activity.",
+    text: "Manage FindIT access, inspect map activity, and review operational records.",
     features: [["01", "Station oversight"], ["02", "Audit and retention"]],
   },
 } as const;

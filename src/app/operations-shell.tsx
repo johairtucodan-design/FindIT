@@ -5,7 +5,7 @@ import { portals, type Portal } from "@/lib/staff";
 
 const menus = {
   station: [["/security", "Receiving queue", "list"], ["/security?tab=review", "Publication review", "list"], ["/security?tab=inventory", "Custody inventory", "box"], ["/security/locations", "Map locations", "pin"]],
-  admin: [["/manager", "Overview", "chart"], ["/manager#users", "User access", "shield"], ["/manager#locations", "Map review", "pin"], ["/manager#retention", "Retention review", "archive"]],
+  admin: [["/manager", "Overview", "chart"], ["/manager#users", "User access", "shield"], ["/manager#location-activity", "Map activity", "pin"], ["/manager#retention", "Retention review", "archive"]],
 } as const;
 
 export default function OperationsShell({ portal, identity, admin, children }: {
@@ -13,7 +13,7 @@ export default function OperationsShell({ portal, identity, admin, children }: {
 }) {
   const station = portal === "station";
   const navigation = menus[portal].map(item => station && admin && item[0] === "/security/locations"
-    ? ["/manager#locations", "Map pin review", "pin"] as const : item);
+    ? ["/manager#location-activity", "Map activity", "pin"] as const : item);
   return <div className={`portal workspace portal-${portal}`}>
     <aside className="workspace-rail">
       <Link className="portal-wordmark" href={portals[portal].home}><span><Icon name={station ? "shield" : "chart"}/></span>FindIT<span className="workspace-brand-sub">{station ? "Station Ops" : "Admin Console"}</span></Link>

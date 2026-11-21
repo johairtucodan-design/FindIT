@@ -12,14 +12,3 @@ export async function assignUserAccess(target:string,form:FormData){
  if(error)return {error:error.code==="42501"?"You are not authorized to change this user’s FindIT access.":error.message||"The access change could not be saved."};
  revalidatePath("/manager");revalidatePath("/security","layout");return {success:"FindIT access updated and recorded."};
 }
-
-export async function reviewStationLocation(target:string,form:FormData){
- const {client}=await requireRole(["admin"]);
- if(!isUuid(target))return {error:"Invalid location reference."};
- const decision=String(form.get("decision")??"");
- if(!["approved","rejected"].includes(decision))return {error:"Choose Approve or Deny."};
- const {error}=await client.rpc("review_station_location",{p_target:target,p_decision:decision});
- if(error)return {error:error.code==="42501"?"Admin access is required to review this pin.":error.message||"The review could not be saved."};
- revalidatePath("/manager");revalidatePath("/stations");revalidatePath("/security/locations");
- return {success:decision==="approved"?"Approved for display on FindIT’s map.":"Suggestion denied; it remains private."};
-}

@@ -142,5 +142,5 @@ export default function StationMap({ stations, locations = [], selectedKey, acti
     return () => window.clearTimeout(timer);
   }, [active, selectedKey]);
 
-  return <div ref={node} className="station-map-canvas" role="region" aria-label={pickMode ? "Select a proposed location on the interactive map" : "Interactive map of sourced station references and reviewed public pins"}/>;
+  return <div ref={node} className="station-map-canvas" role="region" aria-label={pickMode ? "Select a proposed location on the interactive map" : "Interactive map of sourced station references and staff-published public pins"}/>;
 }

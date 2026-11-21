@@ -3,31 +3,27 @@ import {requireRole} from "@/lib/auth";
 import WorkflowForm from "@/app/workflow-form";
 import {operate} from "@/app/operations";
 import {assignUserAccess} from "./actions";
-import LocationReview from "./location-review";
 
 type AdminAccount={user_id:string;email:string|null;full_name:string;role:"citizen"|"officer"|"admin";station_id:string|null;station_name:string|null;created_at:string};
 type AccessChange={id:number;actor_id:string|null;target_id:string;previous_role:"citizen"|"officer"|"admin";new_role:"citizen"|"officer"|"admin";previous_station_id:string|null;new_station_id:string|null;created_at:string};
-type ReviewPin={id:string;station_id:string;station_name:string;name:string;description:string;visit_instructions:string;status:string;is_active:boolean;latitude:number;longitude:number;created_at:string};
-type LocationEvent={id:number;location_id:string;actor_id:string;event_type:string;created_at:string};
+type LocationEvent={id:number;location_id:string;station_id:string;actor_id:string;event_type:string;created_at:string};
 
 export default async function Manager({searchParams}:{searchParams:Promise<{station?:string;start?:string;end?:string}>}) {
   const {client,user}=await requireRole(["admin"]);
   const filters=await searchParams;
-  const [stations,rule,candidates,users,audit,locationQueue,locationEvents]=await Promise.all([
+  const [stations,rule,candidates,users,audit,locationEvents]=await Promise.all([
     client.from("stations").select("id,name,is_demo,is_approved").order("name"),
     client.from("retention_rules").select("retention_days").single(),
     client.rpc("retention_candidates").limit(50),
     client.rpc("admin_user_directory"),
     client.from("profile_role_audit").select("id,actor_id,target_id,previous_role,new_role,previous_station_id,new_station_id,created_at").order("created_at",{ascending:false}).limit(12),
-    client.rpc("station_location_review_queue"),
-    client.from("station_location_events").select("id,location_id,actor_id,event_type,created_at").order("created_at",{ascending:false}).limit(20),
+    client.from("station_location_events").select("id,location_id,station_id,actor_id,event_type,created_at").order("created_at",{ascending:false}).limit(20),
   ]);
-  if(stations.error||users.error||audit.error||locationQueue.error||locationEvents.error) throw new Error("Unable to load FindIT administration data");
+  if(stations.error||users.error||audit.error||locationEvents.error) throw new Error("Unable to load FindIT administration data");
   const stationRows=stations.data??[];
   const publicStations=stationRows.filter(site=>!site.is_demo&&site.is_approved);
   const accounts=(users.data??[]) as AdminAccount[];
   const changes=(audit.data??[]) as AccessChange[];
-  const pins=(locationQueue.data??[]) as ReviewPin[];
   const events=(locationEvents.data??[]) as LocationEvent[];
   const accountById=new Map(accounts.map(account=>[account.user_id,account]));
   const siteName=(id:string|null)=>{
@@ -43,7 +39,7 @@ export default async function Manager({searchParams}:{searchParams:Promise<{stat
   const summary=station?await client.rpc("station_summary",{station,start_day:start,end_day:end}).maybeSingle():null;
   const counts=summary?.data as {received:number;pending_claims:number;released:number}|null;
   return <>
-    <div className="workspace-heading"><p className="eyebrow">Oversight and review</p><h1 className="page-title">Operations overview</h1><p className="muted">Manage FindIT account permissions, review map suggestions, and inspect record activity. This admin console does not establish a police partnership.</p></div>
+    <div className="workspace-heading"><p className="eyebrow">Oversight</p><h1 className="page-title">Operations overview</h1><p className="muted">Manage FindIT account permissions and inspect map and record activity. This admin console does not establish a police partnership.</p></div>
     <section id="users" className="panel workspace-section my-5">
       <h2 className="text-xl font-bold">FindIT user access</h2>
       <p className="muted my-3">Assign Citizen/User, Staff, or Admin access. Staff assignments give the account access to matching reports for that reference; they do not verify employment or police authorization. Assign accounts you control only.</p>
@@ -64,10 +60,15 @@ export default async function Manager({searchParams}:{searchParams:Promise<{stat
         return <li key={change.id}><strong>{target?.email??"Deleted or unavailable user"}</strong><p className="muted">{before} → {after} · {siteName(change.previous_station_id)} → {siteName(change.new_station_id)}</p><small className="muted">Changed by {actor?.email??change.actor_id??"Trusted database operation"} · {new Date(change.created_at).toLocaleString("en-SG",{timeZone:"Asia/Singapore"})}</small></li>;
       })}</ol>:<p className="muted mt-2">No role or station changes recorded yet.</p>}</div>
     </section>
-    <section id="locations" className="panel workspace-section my-5">
-      <p className="eyebrow">PUBLIC MAP</p><h2 className="text-xl font-bold">Review map suggestions</h2>
-      <p className="muted my-3">Approve a pin for FindIT display only. Admin review does not confirm station permission, item acceptance, or custody.</p>
-      <LocationReview pins={pins} events={events.map(event=>({...event,actor_label:accountById.get(event.actor_id)?.email??"Unavailable account"}))}/>
+    <section id="location-activity" className="panel workspace-section my-5">
+      <p className="eyebrow">PUBLIC MAP</p><h2 className="text-xl font-bold">Map pin activity</h2>
+      <p className="muted my-3">Assigned station staff publish their public-reference pins directly. Admin approval is not required; these entries do not confirm police authorization or item acceptance.</p>
+      {events.length?<ol className="timeline location-audit">{events.map(event=>{
+        const stationName=stationRows.find(row=>row.id===event.station_id)?.name??"Unavailable station";
+        const actor=accountById.get(event.actor_id)?.email??"Unavailable account";
+        const label=({published:"Published to public map",edited:"Updated public map pin",deactivated:"Removed pin from public map",proposed:"Proposed pin (older review flow)",resubmitted:"Resubmitted pin (older review flow)",approved:"Approved in older review flow",rejected:"Rejected in older review flow"} as Record<string,string>)[event.event_type]??event.event_type;
+        return <li key={event.id}><strong>{label}</strong><p className="muted">{stationName} · Pin {event.location_id.slice(0,8)} · {actor}</p><small>{new Date(event.created_at).toLocaleString("en-SG",{timeZone:"Asia/Singapore"})}</small></li>;
+      })}</ol>:<p className="muted">No map pins have been published yet.</p>}
     </section>
     <section id="activity" className="panel workspace-section my-5">
       <h2 className="text-xl font-bold">Station activity</h2><p className="muted my-3">Receipt and handover events, plus claims pending in the selected dates. Synthetic examples are excluded. Dates use Singapore time.</p>

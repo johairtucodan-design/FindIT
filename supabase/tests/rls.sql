@@ -174,32 +174,29 @@ do $$declare demo_found uuid; demo_station uuid; begin
   perform pg_temp.denied(pg_catalog.format('select public.receive_item(%L,%L,%L,true)',demo_found,demo_station,'Synthetic shelf'));
 end;$$;
 
--- Station pin proposals are station-scoped, reviewed before display, and audited.
+-- Station staff publish pins immediately; scope, public visibility and audit are enforced.
 reset role;
 create temp table location_target(id uuid);
 grant select,insert on location_target to authenticated,anon;
+do $$begin
+ assert to_regprocedure('public.review_station_location(uuid,text)') is null;
+ assert to_regprocedure('public.station_location_review_queue()') is null;
+end;$$;
 set local role authenticated;
 select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='officerA'),true);
 insert into location_target select public.propose_station_location(
   (select id from sites where n=1),'Synthetic RLS pin','Synthetic-only map proposal','Synthetic visit instructions for rollback test',8.2,124.2
 );
 do $$begin
- assert (select status='pending_review' and is_active from public.station_locations where id=(select id from location_target));
+ assert (select status='published' and is_active and reviewed_by is null and reviewed_at is null from public.station_locations where id=(select id from location_target));
  assert (select count(*)=1 from public.station_locations_for_staff() where id=(select id from location_target));
- assert (select count(*)=0 from public.station_location_directory() where id=(select id from location_target));
+ assert (select count(*)=1 from public.station_location_directory() where id=(select id from location_target));
+ assert (select count(*)=1 from public.station_location_events where location_id=(select id from location_target) and event_type='published');
 end;$$;
 select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='officerB'),true);
 do $$begin
  assert (select count(*)=0 from public.station_locations_for_staff() where id=(select id from location_target));
  perform pg_temp.denied('select public.update_station_location((select id from location_target),''Edited pin'',''New description'',''New visit note'',8.2,124.2)');
- perform pg_temp.denied('select public.station_location_review_queue()');
-end;$$;
-select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='admin'),true);
-do $$begin assert (select count(*)=1 from public.station_location_review_queue() where id=(select id from location_target));end;$$;
-select public.review_station_location((select id from location_target),'approved');
-do $$begin
- assert (select status='approved' and reviewed_by=auth.uid() and reviewed_at is not null from public.station_locations where id=(select id from location_target));
- assert (select count(*)=1 from public.station_location_events where location_id=(select id from location_target) and event_type='approved');
 end;$$;
 reset role;
 set local role anon;
@@ -210,6 +207,12 @@ end;$$;
 reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub',(select id::text from fixtures where label='officerA'),true);
+select public.update_station_location((select id from location_target),'Updated RLS pin','Updated public map description','Updated public visit instructions',8.21,124.21);
+do $$begin
+ assert (select status='published' and reviewed_by is null and reviewed_at is null from public.station_locations where id=(select id from location_target));
+ assert (select count(*)=1 from public.station_location_directory() where id=(select id from location_target));
+ assert (select count(*)=1 from public.station_location_events where location_id=(select id from location_target) and event_type='edited');
+end;$$;
 select public.deactivate_station_location((select id from location_target));
 do $$begin
  assert (select not is_active from public.station_locations where id=(select id from location_target));
@@ -226,4 +229,4 @@ do $$begin
  perform pg_temp.denied('select private_answer from public.claims');
 end;$$;
 rollback;
-select 'PASS publication, intake, custody, private claims, pin authorization and review, demo isolation, release and archival' as result;
+select 'PASS publication, intake, custody, private claims, immediate station-pin publishing and scope, demo isolation, release and archival' as result;

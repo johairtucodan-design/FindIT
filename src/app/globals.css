@@ -203,24 +203,17 @@ input[aria-invalid=true], textarea[aria-invalid=true] { border-color: #b91c1c; }
 .station-pin-option strong { font-size:.86rem; }
 .station-pin-option span,.station-pin-option small { color:var(--muted); font-size:.72rem; line-height:1.45; }
 .station-pin-disclaimer { margin-top:.7rem; padding:.7rem; border:1px solid #f1d38a; border-radius:.7rem; color:#704800; background:#fff9e9; font-size:.72rem; line-height:1.5; }
-.station-location-layout,.location-review-layout { display:grid; grid-template-columns:minmax(16rem,.8fr) minmax(0,1.2fr); gap:1rem; align-items:start; }
+.station-location-layout { display:grid; grid-template-columns:minmax(16rem,.8fr) minmax(0,1.2fr); gap:1rem; align-items:start; }
 .station-location-list { display:grid; gap:.65rem; margin:0; padding:0; list-style:none; }
 .station-location-card { display:grid; gap:.4rem; padding:.9rem; border:1px solid var(--line); border-radius:.8rem; background:#fff; }
 .station-location-card h3 { font-size:.9rem; font-weight:800; }
-.station-location-card p,.location-review-card p { color:var(--muted); font-size:.76rem; line-height:1.5; }
+.station-location-card p { color:var(--muted); font-size:.76rem; line-height:1.5; }
 .station-location-card .button { justify-self:start; }
 .location-status { width:max-content; border-radius:2rem; padding:.25rem .55rem; color:#6c4a00; background:#fff6df; font-size:.65rem; font-weight:800; }
-.location-status.approved { color:#17634f; background:#effaf5; }
+.location-status.approved,.location-status.published { color:#17634f; background:#effaf5; }
 .location-status.rejected { color:#8a2626; background:#fff0ee; }
 .location-pin-form { min-width:0; }
 .location-pin-map { margin:.75rem 0; }
-.location-review-list { display:grid; align-content:start; gap:.55rem; max-height:68svh; overflow:auto; padding:0; list-style:none; }
-.location-review-card { width:100%; padding:.8rem; border:1px solid var(--line); border-radius:.75rem; background:#fff; text-align:left; cursor:pointer; }
-.location-review-card[aria-pressed=true] { border-color:var(--primary); background:var(--soft); }
-.location-review-heading { display:flex; justify-content:space-between; gap:.6rem; align-items:flex-start; }
-.location-review-heading strong { font-size:.82rem; }
-.location-review-caption { margin-top:.25rem; color:var(--muted); font-size:.7rem; }
-.location-review-details { margin-top:1rem; padding-top:1rem; border-top:1px solid var(--line); }
 .location-coordinate-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.7rem; }
 .location-audit { margin-top:1rem; padding-top:1rem; border-top:1px solid var(--line); }
 .location-audit li { font-size:.76rem; }
@@ -427,8 +420,7 @@ input[aria-invalid=true], textarea[aria-invalid=true] { border-color: #b91c1c; }
   .station-list-heading h2 { font-size:1.05rem; }
   .station-details-grid { grid-template-columns:1fr; }
   .station-details-title { align-items:flex-start; }
-  .station-location-layout,.location-review-layout { grid-template-columns:1fr; }
-  .location-review-list { max-height:none; }
+  .station-location-layout { grid-template-columns:1fr; }
   .auth-shell { grid-template-columns:1fr; }
   .auth-aside { display:none; }
   .report-layout { grid-template-columns:1fr; gap:1rem; }
