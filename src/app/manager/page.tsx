@@ -63,6 +63,7 @@ export default async function Manager({searchParams}:{searchParams:Promise<{stat
     <section id="location-activity" className="panel workspace-section my-5">
       <p className="eyebrow">PUBLIC MAP</p><h2 className="text-xl font-bold">Map pin activity</h2>
       <p className="muted my-3">Assigned station staff publish their public-reference pins directly. Admin approval is not required; these entries do not confirm police authorization or item acceptance.</p>
+      <Link className="button secondary mb-4" href="/security/locations">Add or manage map pins</Link>
       {events.length?<ol className="timeline location-audit">{events.map(event=>{
         const stationName=stationRows.find(row=>row.id===event.station_id)?.name??"Unavailable station";
         const actor=accountById.get(event.actor_id)?.email??"Unavailable account";

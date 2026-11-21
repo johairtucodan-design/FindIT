@@ -17,14 +17,15 @@ function locationInput(form: FormData) {
 }
 
 async function saveLocation(target: string | null, form: FormData) {
-  const { client, profile } = await requireRole(["officer"]);
-  if (!profile.station_id) return { error: "Ask an administrator to assign your staff account to a public-reference station." };
+  const { client, profile } = await requireRole(["officer", "admin"]);
+  const stationId = profile.role === "admin" ? String(form.get("station_id") ?? "").trim() : profile.station_id;
+  if (!stationId || !isUuid(stationId)) return { error: "Choose an approved public-reference station." };
   if (target && !isUuid(target)) return { error: "Invalid location reference." };
   const value = locationInput(form);
   if ("error" in value) return value;
   const { error } = target
     ? await client.rpc("update_station_location", { p_target: target, p_name: value.name, p_description: value.description, p_visit_instructions: value.visitInstructions, p_latitude: value.latitude, p_longitude: value.longitude })
-    : await client.rpc("propose_station_location", { p_station: profile.station_id, p_name: value.name, p_description: value.description, p_visit_instructions: value.visitInstructions, p_latitude: value.latitude, p_longitude: value.longitude });
+    : await client.rpc("propose_station_location", { p_station: stationId, p_name: value.name, p_description: value.description, p_visit_instructions: value.visitInstructions, p_latitude: value.latitude, p_longitude: value.longitude });
   if (error) return { error: error.code === "42501" ? "This pin is outside your assigned station access." : error.message || "The location could not be saved." };
   revalidatePath("/security/locations"); revalidatePath("/manager"); revalidatePath("/stations");
   return { success: target ? "Map pin updated and published." : "Map pin published and visible on FindIT." };
@@ -39,7 +40,7 @@ export async function updateStationLocation(target: string, form: FormData) {
 }
 
 export async function deactivateStationLocation(target: string, form: FormData) {
-  const { client } = await requireRole(["officer"]);
+  const { client } = await requireRole(["officer", "admin"]);
   if (!isUuid(target)) return { error: "Invalid location reference." };
   if (form.get("confirmed") !== "on") return { error: "Confirm deactivation first." };
   const { error } = await client.rpc("deactivate_station_location", { p_target: target });

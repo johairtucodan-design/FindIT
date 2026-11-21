@@ -12,14 +12,12 @@ export default function OperationsShell({ portal, identity, admin, children }: {
   portal: Portal; identity: string; admin?: boolean; children: React.ReactNode;
 }) {
   const station = portal === "station";
-  const navigation = menus[portal].map(item => station && admin && item[0] === "/security/locations"
-    ? ["/manager#location-activity", "Map activity", "pin"] as const : item);
   return <div className={`portal workspace portal-${portal}`}>
     <aside className="workspace-rail">
       <Link className="portal-wordmark" href={portals[portal].home}><span><Icon name={station ? "shield" : "chart"}/></span>FindIT<span className="workspace-brand-sub">{station ? "Station Ops" : "Admin Console"}</span></Link>
       <p className="portal-overline workspace-menu-label">{station ? "Operations" : "Management"}</p>
       <nav className="workspace-nav" aria-label={station ? "Station navigation" : "Administration navigation"}>
-        {navigation.map(([href, text, icon]) => <Link href={href} key={href}><Icon name={icon} size={18}/>{text}</Link>)}
+        {menus[portal].map(([href, text, icon]) => <Link href={href} key={href}><Icon name={icon} size={18}/>{text}</Link>)}
       </nav>
       <div className="workspace-exits">
         {admin && <Link href={station ? "/manager" : "/security"}>{station ? "Admin console" : "Station operations"} <Icon name="arrow" size={15}/></Link>}
