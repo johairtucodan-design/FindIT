@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import StationMap from "@/app/(resident)/stations/station-map";
 import WorkflowForm from "@/app/workflow-form";
 import type { ManagedStationLocation } from "@/lib/station-locations";
+import { pinPreviewHref, pinSaveFeedback } from "@/lib/station-pin-feedback";
 import type { Station } from "@/app/(resident)/stations/directory";
 import { deactivateStationLocation, proposeStationLocation, updateStationLocation } from "./actions";
 
@@ -17,16 +19,18 @@ export default function LocationManager({ stations, initialStationId, locations,
   const [editing, setEditing] = useState<ManagedStationLocation | null>(null);
   const [values, setValues] = useState(blank);
   const [coordinates, setCoordinates] = useState<[string, string]>(["", ""]);
+  const [formVersion, setFormVersion] = useState(0);
   const station = stations.find(item => item.id === stationId) ?? null;
   const stationLocations = locations.filter(item => item.station_id === stationId);
   const point = coordinates.every(value => value.trim() && Number.isFinite(Number(value)))
     ? [Number(coordinates[0]), Number(coordinates[1])] as [number, number] : null;
-  function startNew() { setEditing(null); setValues(blank); setCoordinates(["", ""]); }
+  function startNew() { setEditing(null); setValues(blank); setCoordinates(["", ""]); setFormVersion(value => value + 1); }
   function startEdit(pin: ManagedStationLocation) {
     setStationId(pin.station_id);
     setEditing(pin);
     setValues({ name: pin.name, description: pin.description, visit_instructions: pin.visit_instructions });
     setCoordinates([String(pin.latitude), String(pin.longitude)]);
+    setFormVersion(value => value + 1);
   }
   function setCoordinate(index: 0 | 1, value: string) {
     const next: [string, string] = [...coordinates];
@@ -45,17 +49,25 @@ export default function LocationManager({ stations, initialStationId, locations,
     </section>
     <section className="panel location-pin-form" aria-label="Create or edit a public map pin">
       <p className="eyebrow">{editing ? "EDIT PUBLIC MAP PIN" : "NEW PUBLIC MAP PIN"}</p><h2 className="text-lg font-bold">{editing ? editing.name : "Place a pin"}</h2>
-      <p className="muted mt-2 text-sm">Click or tap to place the orange marker, then drag it to adjust. You can also enter coordinates below. Publishing makes this public-reference pin visible on FindIT immediately; it does not add a station-directory record. Don’t describe unverified station services or receiving hours.</p>
+      <p className="muted mt-2 text-sm">Click or tap to place the orange marker, then drag it to adjust. You can also enter coordinates below. Saving adds this public map reference to FindIT; it does not add a station-directory record or verify police publication. Don’t describe unverified station services or receiving hours.</p>
       {allowStationSelection && <label className="block my-4">Public-reference station<select name="station_picker" value={stationId} onChange={event => { setStationId(event.target.value); startNew(); }} required>{stations.map(item => <option key={item.id} value={item.id}>{item.name.value}</option>)}</select></label>}
       <div className="station-map-frame location-pin-map"><StationMap stations={station ? [station] : []} locations={stationLocations} selectedKey={editing ? `location:${editing.id}` : station ? `station:${station.id}` : null} selectedCoordinates={point} selectedCoordinatesLabel="Proposed map pin" active pickMode onSelect={key => { const pin=stationLocations.find(item=>`location:${item.id}`===key); if(pin) startEdit(pin); }} onPickCoordinate={([latitude,longitude])=>setCoordinates([latitude.toFixed(6),longitude.toFixed(6)])}/></div>
-      <WorkflowForm action={action} label={editing ? "Save and publish changes" : "Publish pin to map"}>
+      <WorkflowForm key={formVersion} action={action} label={editing ? "Save map reference" : "Add to public map"} disableAfterSuccess renderResult={result => {
+        const feedback = pinSaveFeedback(result);
+        if (!feedback) return result.error ? <p className="error" role="alert">{result.error}</p> : result.success ? <p className="notice" role="status">{result.success}</p> : null;
+        if (feedback.kind === "error") return <p className="error" role="alert">{feedback.message}</p>;
+        return <div className="pin-save-confirmation" role="status" aria-live="polite">
+          <div><p className="eyebrow">MAP UPDATED</p><h3>{feedback.pin.name}</h3><p>{feedback.pin.stationName}</p><small>Now visible as an unverified public map reference. It does not mean the police published or approved this location.</small></div>
+          <div className="pin-save-actions"><Link className="button secondary" href={pinPreviewHref(feedback.pin)}>Preview on public map</Link><button className="button" type="button" onClick={startNew}>Add another pin</button></div>
+        </div>;
+      }}>
         <input type="hidden" name="station_id" value={station?.id ?? ""}/>
         <label>Location name<input name="name" maxLength={120} required value={values.name} onChange={event=>setValues({...values,name:event.target.value})} placeholder="Example: Public entrance"/></label>
         <label>Public description<textarea name="description" maxLength={1200} rows={3} required value={values.description} onChange={event=>setValues({...values,description:event.target.value})}/></label>
         <label>Visit instructions<textarea name="visit_instructions" maxLength={1000} rows={3} required value={values.visit_instructions} onChange={event=>setValues({...values,visit_instructions:event.target.value})}/></label>
         <div className="location-coordinate-grid"><label>Latitude<input name="latitude" type="number" min="-90" max="90" step="0.000001" required value={coordinates[0]} onChange={event=>setCoordinate(0,event.target.value)}/></label><label>Longitude<input name="longitude" type="number" min="-180" max="180" step="0.000001" required value={coordinates[1]} onChange={event=>setCoordinate(1,event.target.value)}/></label></div>
       </WorkflowForm>
-      <p className="station-pin-disclaimer">FindIT is a prototype with no confirmed police partners. Staff-published pins are unverified public references, not station permission, an authorized drop-off point, or proof that an item is held there.</p>
+      <p className="station-pin-disclaimer">FindIT is a prototype with no confirmed police partners. These location references are not verified police-published pins, station permission, an authorized drop-off point, or proof that an item is held there.</p>
     </section>
   </div>;
 }

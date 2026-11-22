@@ -6,12 +6,12 @@ import { Icon } from "@/app/glyph";
 import type { SourcedField, Station } from "./directory";
 import type { StationLocationPin } from "@/lib/station-locations";
 import { isGeoPoint, rankNearby, type GeoPoint } from "@/lib/geospatial";
-import { formatStepTime, formatTravelTime, type DrivingRoute, type RoutedStation } from "@/lib/station-routing";
+import { formatRouteDistance, formatStepTime, formatTravelTime, publicPinSourceLabel, type WalkingRoute, type RoutedStation } from "@/lib/station-routing";
 import { resolveStationSelection, stationSelectionKey } from "@/lib/station-selection";
 import StationMap from "./station-map";
 
 type DirectoryFilter = "all" | "mapped" | "review";
-type RouteState = DrivingRoute & { stationId: string };
+type RouteState = WalkingRoute & { stationId: string };
 
 function needsLocationReview(station: Station) {
   return station.address.status === "conflict" || !station.coordinates.value;
@@ -34,18 +34,15 @@ function SourceDetail({ label, field, value }: { label: string; field: SourcedFi
   </div>;
 }
 
-function routeDistance(meters: number) {
-  return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`;
-}
-
-export default function Locator({ stations, locations }: { stations: readonly Station[]; locations: readonly StationLocationPin[] }) {
+export default function Locator({ stations, locations, initialLocationId = null }: { stations: readonly Station[]; locations: readonly StationLocationPin[]; initialLocationId?: string | null }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<DirectoryFilter>("all");
   const [position, setPosition] = useState<[number, number] | null>(null);
   const [message, setMessage] = useState("");
   const [choosingOrigin, setChoosingOrigin] = useState(false);
-  const [selectedKey, setSelectedKey] = useState<string | null>(stations[0] ? stationSelectionKey("station", stations[0].id) : locations[0] ? stationSelectionKey("location", locations[0].id) : null);
-  const [mobileView, setMobileView] = useState<"list" | "map">("list");
+  const [shareConsent, setShareConsent] = useState(false);
+  const [selectedKey, setSelectedKey] = useState<string | null>(initialLocationId && locations.some(pin => pin.id === initialLocationId) ? stationSelectionKey("location", initialLocationId) : stations[0] ? stationSelectionKey("station", stations[0].id) : locations[0] ? stationSelectionKey("location", locations[0].id) : null);
+  const [mobileView, setMobileView] = useState<"list" | "map">(initialLocationId ? "map" : "list");
   const [routedStations, setRoutedStations] = useState<RoutedStation[]>([]);
   const [route, setRoute] = useState<RouteState | null>(null);
   const [routing, setRouting] = useState(false);
@@ -74,11 +71,14 @@ export default function Locator({ stations, locations }: { stations: readonly St
   const pointCount = results.filter(station => station.kind === "station" && station.coordinates.value).length;
 
   function select(key: string | null) {
+    if (routing) return;
     setSelectedKey(key);
     const id = key?.startsWith("station:") ? key.slice("station:".length) : null;
     if (route && route.stationId !== id) setRoute(null);
     setRouteError("");
     setMobileView("map");
+    const station = id ? stations.find(item => item.id === id) : null;
+    if (position && shareConsent && station?.kind === "station" && station.coordinates.value && station.coordinates.status === "sourced" && route?.stationId !== id) void showRoute(station);
   }
 
   function useOrigin(value: unknown) {
@@ -88,6 +88,7 @@ export default function Locator({ stations, locations }: { stations: readonly St
     }
     const point: GeoPoint = [value[0], value[1]];
     setPosition([point[0], point[1]]);
+    setShareConsent(false);
     setChoosingOrigin(false);
     setRoutedStations([]);
     setRoute(null);
@@ -111,15 +112,15 @@ export default function Locator({ stations, locations }: { stations: readonly St
     const response = await fetch("/api/station-routes", {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), cache: "no-store",
     });
-    const result = await response.json() as { error?: string; ranked?: RoutedStation[]; route?: DrivingRoute };
+    const result = await response.json() as { error?: string; ranked?: RoutedStation[]; route?: WalkingRoute };
     if (!response.ok) throw new Error(result.error ?? "The route could not be calculated.");
     return result;
   }
 
   async function findNearest() {
-    if (!position) return;
-    const candidates = filteredStations.filter(station => station.kind === "station" && station.coordinates.value);
-    if (!candidates.length) return setMessage("No police station references with sourced map pins match this view.");
+    if (!position || !shareConsent) return;
+    const candidates = filteredStations.filter(station => station.kind === "station" && station.coordinates.value && station.coordinates.status === "sourced");
+    if (!candidates.length) return setMessage("No police station references with verified map pins match this view.");
     setRouting(true);
     setRoute(null);
     setRouteError("");
@@ -129,13 +130,22 @@ export default function Locator({ stations, locations }: { stations: readonly St
       setRoutedStations(ranked);
       const nearest = ranked[0];
       if (!nearest) {
-        setMessage("The route service could not find a reachable station with the current map data.");
+        setMessage("The walking route service did not return a reachable station. Check the starting point or try again later.");
         return;
       }
       setSelectedKey(stationSelectionKey("station", nearest.station_id));
       setMobileView("map");
       const nearestStation = stations.find(station => station.id === nearest.station_id);
-      setMessage(nearestStation ? `Nearest reachable by estimated driving time: ${nearestStation.name.value}.` : "Nearest reachable station found.");
+      setMessage(nearestStation ? `Nearest reachable station by estimated walking time: ${nearestStation.name.value}.` : "Nearest reachable station found.");
+      if (nearestStation) {
+        try {
+          const details = await requestRoute({ mode: "route", origin: position, station_id: nearest.station_id });
+          if (!details.route) throw new Error("The walking route service returned no path.");
+          setRoute({ ...details.route, stationId: nearest.station_id });
+        } catch (error) {
+          setRouteError(`The walking time is available, but the map path and turn-by-turn steps could not be loaded. ${error instanceof Error ? error.message : "Try again."}`);
+        }
+      }
     } catch (error) {
       setRoutedStations([]);
       setRouteError(error instanceof Error ? error.message : "The route could not be calculated.");
@@ -143,33 +153,42 @@ export default function Locator({ stations, locations }: { stations: readonly St
   }
 
   async function showRoute(station: Station) {
-    if (!position || !station.coordinates.value) return;
+    if (!position || !shareConsent || !station.coordinates.value || station.coordinates.status !== "sourced") return;
     setRouting(true);
     setRouteError("");
     try {
       const result = await requestRoute({ mode: "route", origin: position, station_id: station.id });
-      if (!result.route) throw new Error("The route service returned no driving directions.");
+      if (!result.route) throw new Error("The route service returned no walking directions.");
       setRoute({ ...result.route, stationId: station.id });
+      setMessage(`Walking route shown to ${station.name.value}.`);
     } catch (error) {
       setRoute(null);
-      setRouteError(error instanceof Error ? error.message : "A driving route is unavailable right now.");
+      setRouteError(error instanceof Error ? error.message : "A walking route is unavailable right now.");
     } finally { setRouting(false); }
   }
 
   return <>
     <section className="station-search panel" aria-label="Search station directory">
       <div className="station-search-row">
-        <label>Search stations<input type="search" value={query} onChange={event => { setQuery(event.target.value); setRoutedStations([]); setRoute(null); }} placeholder="Station name, area, or phone"/></label>
-        <label>Show<select value={filter} onChange={event => { setFilter(event.target.value as DirectoryFilter); setRoutedStations([]); setRoute(null); }}><option value="all">All public listings</option><option value="mapped">With sourced map pin</option><option value="review">Needs location verification</option></select></label>
-        <div className="station-origin-actions"><button className="button secondary" type="button" onClick={locate}><Icon name="pin" size={18}/> Use my location</button><button className="button secondary" type="button" aria-pressed={choosingOrigin} onClick={() => { setChoosingOrigin(value => !value); setMobileView("map"); setMessage(choosingOrigin ? "Map selection cancelled." : "Tap the map to choose a starting point, then adjust the orange marker."); }}>{choosingOrigin ? "Cancel map pick" : "Choose on map"}</button>{position && <button className="text-link" type="button" onClick={() => { setPosition(null); setRoutedStations([]); setRoute(null); setChoosingOrigin(false); setRouteError(""); setMessage("Starting point cleared."); }}>Clear point</button>}</div>
+        <label>Search stations<input type="search" value={query} disabled={routing} onChange={event => { setQuery(event.target.value); setRoutedStations([]); setRoute(null); }} placeholder="Station name, area, or phone"/></label>
+        <label>Show<select value={filter} disabled={routing} onChange={event => { setFilter(event.target.value as DirectoryFilter); setRoutedStations([]); setRoute(null); }}><option value="all">All public listings</option><option value="mapped">With sourced map pin</option><option value="review">Needs location verification</option></select></label>
+        <div className="station-origin-actions"><button className="button secondary" type="button" onClick={locate} disabled={routing}><Icon name="pin" size={18}/> Use my location</button><button className="button secondary" type="button" aria-pressed={choosingOrigin} disabled={routing} onClick={() => { setChoosingOrigin(value => !value); setMobileView("map"); setMessage(choosingOrigin ? "Map selection cancelled." : "Tap the map to choose a starting point, then adjust the orange marker."); }}>{choosingOrigin ? "Cancel map pick" : "Choose on map"}</button>{position && <button className="text-link" type="button" disabled={routing} onClick={() => { setPosition(null); setShareConsent(false); setRoutedStations([]); setRoute(null); setChoosingOrigin(false); setRouteError(""); setMessage("Starting point cleared."); }}>Clear point</button>}</div>
       </div>
-      <p className="muted mt-3 text-sm" role="status">{message || `${results.length} public listings · ${pointCount} sourced station pins · ${visibleLocations.length} staff-published map pins`}</p>
+      <p className="muted mt-3 text-sm" role="status">{message || `${results.length} public listings · ${pointCount} sourced station pins · ${visibleLocations.length} ${publicPinSourceLabel.toLowerCase()}s`}</p>
       {position && <div className="station-routing-consent">
-        <div><p className="eyebrow">ROUTE PRIVACY</p><p>When you request directions, your starting point is sent to the community OSRM route service to calculate a driving route. FindIT does not save it. This low-volume service is best-effort, limited to one request per second, and does not use live traffic.</p><a href="https://project-osrm.org/docs/v26.6.1/http" target="_blank" rel="noreferrer">About OSRM routing and data</a></div>
-        <button className="button" type="button" disabled={routing} onClick={findNearest}>{routing ? "Finding routes…" : "Find nearest by driving time"}</button>
+        <div><p className="eyebrow">WALKING ROUTES · LOCATION SHARING</p><p>Your starting point and the station locations you request will be sent to the FOSSGIS OpenStreetMap routing server to calculate walking routes. FOSSGIS records request logs. FindIT keeps your starting point in this browser only and does not send it to Supabase. Routes are estimates from map data, with no live traffic; the community service is best-effort.</p><div className="station-routing-links"><a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noreferrer">Routing service and usage policy</a><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap attribution</a></div><label className="station-consent-check"><input type="checkbox" checked={shareConsent} disabled={routing} onChange={event => { setShareConsent(event.target.checked); if (!event.target.checked) { setRoutedStations([]); setRoute(null); setRouteError(""); } }}/><span>I understand my starting point will be shared if I find the nearest station or select a station route.</span></label></div>
+        <button className="button" type="button" disabled={!shareConsent || routing} onClick={findNearest}>{routing ? "Finding walking routes…" : "Find nearest by walking time"}</button>
       </div>}
-      {position && nearestRoute && <div className="nearby-result"><div><p className="eyebrow">NEAREST REACHABLE STATION · BY ESTIMATED DRIVE TIME</p><strong>{nearestRoute.station.name.value}</strong><span>{formatTravelTime(nearestRoute.result!.duration_seconds)} · {routeDistance(nearestRoute.result!.distance_meters)} road route · estimates can change</span></div><button className="button secondary" type="button" onClick={() => { select(stationSelectionKey("station", nearestRoute.station.id)); void showRoute(nearestRoute.station); }} disabled={routing}>Show route</button></div>}
-      {position && !nearestRoute && routedStations.length === 0 && <p className="station-empty mt-3">Choose a starting point, then find a reachable station using routed driving time. Straight-line distance is shown separately.</p>}
+      {position && nearestRoute && <div className="walking-results" aria-label="Stations ranked by walking route time">
+        <div className="nearby-result"><div><p className="eyebrow">NEAREST REACHABLE · SHORTEST WALKING TIME</p><strong>{nearestRoute.station.name.value}</strong><span>About {formatTravelTime(nearestRoute.result!.duration_seconds)} walking · {formatRouteDistance(nearestRoute.result!.distance_meters)} by route</span><small>Ranked by returned walking time. Select a station to view its route; estimates may change.</small></div><span className="walking-rank-badge">01 · NEAREST</span></div>
+        {routedStations.length > 1 && <div className="walking-alternatives"><p className="eyebrow">OTHER REACHABLE STATIONS · BY WALKING TIME</p><ul>{routedStations.slice(1, 4).map((item, index) => {
+          const station = stations.find(candidate => candidate.id === item.station_id);
+          if (!station) return null;
+          const key = stationSelectionKey("station", station.id), active = activeKey === key;
+          return <li key={station.id}><button type="button" className={`walking-alternative${active ? " is-selected" : ""}`} aria-pressed={active} onClick={() => select(key)} disabled={routing}><span className="walking-alternative-number">{String(index + 2).padStart(2, "0")}</span><span><strong>{station.name.value}</strong><small>{formatTravelTime(item.duration_seconds)} walk · {formatRouteDistance(item.distance_meters)}</small></span><span className="walking-alternative-action">{active ? "Selected" : "View route"}</span></button></li>;
+        })}</ul></div>}
+      </div>}
+      {position && !nearestRoute && routedStations.length === 0 && <p className="station-empty mt-3">{shareConsent ? "Choose Find nearest by walking time to compare eligible station routes. Straight-line distance is shown separately." : "Choose a starting point, review the sharing note, then agree before requesting a walking route."}</p>}
       {routeError && <p className="error mt-3" role="alert">{routeError}</p>}
       {choosingOrigin && <p className="station-map-pick-hint" role="note">Tap the map to place the starting point. Drag the orange marker to fine-tune it. It will not be sent anywhere until you request a route.</p>}
     </section>
@@ -193,26 +212,26 @@ export default function Locator({ stations, locations }: { stations: readonly St
               <span className="station-option-top"><span className="station-number">{String(index + 1).padStart(2, "0")}</span><span className="station-type">{station.kind === "headquarters" ? "City headquarters" : "Police station"}</span><span className={`station-status${station.address.status === "conflict" ? " has-conflict" : ""}`}>{state}</span></span>
               <strong>{station.name.value}</strong><span className="station-address">{address}</span>
               <span className="station-address">{station.phone.value?.[0] ?? missingLabel(station.phone, "Phone")}</span>
-              {routed && <span className="station-distance">{formatTravelTime(routed.duration_seconds)} drive · {routeDistance(routed.distance_meters)} by road</span>}
+              {routed && <span className="station-distance">{formatTravelTime(routed.duration_seconds)} walk · {formatRouteDistance(routed.distance_meters)} by route</span>}
               {position && straight !== undefined && <span className="station-address">{straight.toFixed(1)} km straight-line distance</span>}
-              {position && routedStations.length > 0 && !routed && station.kind === "station" && station.coordinates.value && <span className="station-address">No reachable driving route returned</span>}
+              {position && routedStations.length > 0 && !routed && station.kind === "station" && station.coordinates.value && station.coordinates.status === "sourced" && <span className="station-address">No walking route returned</span>}
               <span className="station-open">{active ? "Selected details" : "View station"}<Icon name="arrow" size={16}/></span>
             </button>
           </li>;
         })}</ul> : <p className="station-empty">No station listings match. Try a shorter search or another filter.</p>}
-        {orderedLocations.length > 0 && <ul className="station-pin-list"><li><h3>Staff-published map references</h3><p className="muted text-xs">These pins are not reviewed or station-approved handover locations.</p></li>{orderedLocations.map(pin => {
+        {orderedLocations.length > 0 && <ul className="station-pin-list"><li><h3>Public map references</h3><p className="muted text-xs">These location references are not verified police-published pins or confirmed handover points.</p></li>{orderedLocations.map(pin => {
           const key = stationSelectionKey("location", pin.id), active = activeKey === key;
-          return <li key={pin.id}><button type="button" className={`station-pin-option${active ? " is-selected" : ""}`} aria-pressed={active} onClick={() => select(key)}><strong>{pin.name}</strong><span>{pin.station_name} · Staff-published reference</span><small>{pin.description}</small></button></li>;
+          return <li key={pin.id}><button type="button" className={`station-pin-option${active ? " is-selected" : ""}`} aria-pressed={active} onClick={() => select(key)}><strong>{pin.name}</strong><span>{pin.station_name} · {publicPinSourceLabel}</span><small>{pin.description}</small></button></li>;
         })}</ul>}
       </section>
 
-      <section className={`station-map-pane${mobileView === "map" ? " is-mobile-active" : ""}`} aria-label="Selected station and map">
-        <div className="station-map-heading"><div><p className="eyebrow">INTERACTIVE STATION MAP</p><h2>{selectedLocation?.name ?? activeStation?.name.value ?? "Station map"}</h2><p>{selectedLocation ? selectedLocation.station_name : activeStation?.address.value ?? (activeStation ? missingLabel(activeStation.address, "Address") : "Search the list to find public station information.")}</p></div><span className={`map-pin-status${selectedLocation || activeStation?.coordinates.value ? " is-pinned" : ""}`}><i/>{selectedLocation ? "Staff-published reference" : activeStation?.coordinates.value ? "Sourced map pin" : activeStation ? missingLabel(activeStation.coordinates, "Map pin") : "No selected location"}</span></div>
+      <section id="station-map" className={`station-map-pane${mobileView === "map" ? " is-mobile-active" : ""}`} aria-label="Selected station and map" tabIndex={-1}>
+        <div className="station-map-heading"><div><p className="eyebrow">INTERACTIVE STATION MAP</p><h2>{selectedLocation?.name ?? activeStation?.name.value ?? "Station map"}</h2><p>{selectedLocation ? selectedLocation.station_name : activeStation?.address.value ?? (activeStation ? missingLabel(activeStation.address, "Address") : "Search the list to find public station information.")}</p></div><span className={`map-pin-status${selectedLocation || activeStation?.coordinates.value ? " is-pinned" : ""}`}><i/>{selectedLocation ? publicPinSourceLabel : activeStation?.coordinates.value ? "Sourced map pin" : activeStation ? missingLabel(activeStation.coordinates, "Map pin") : "No selected location"}</span></div>
         <div className={`station-map-frame${choosingOrigin ? " is-picking" : ""}`}><StationMap stations={results} locations={locations} selectedKey={activeKey} selectedCoordinates={position} selectedCoordinatesLabel="Your starting point" routeCoordinates={displayedRoute?.coordinates ?? null} pickMode={choosingOrigin} active={mobileView === "map"} onSelect={select} onPickCoordinate={useOrigin}/></div>
         {selectedLocation && <div className="station-selected-details">
-          <div className="station-details-title"><div><p className="eyebrow">STAFF-PUBLISHED REFERENCE</p><h3>{selectedLocation.name}</h3></div><span>Not station-approved</span></div>
+          <div className="station-details-title"><div><p className="eyebrow">{publicPinSourceLabel.toUpperCase()}</p><h3>{selectedLocation.name}</h3></div><span>Not independently verified</span></div>
           <dl className="station-details-grid"><div className="station-detail-row"><dt>Station reference</dt><dd>{selectedLocation.station_name}</dd></div><div className="station-detail-row"><dt>Public description</dt><dd>{selectedLocation.description}</dd></div><div className="station-detail-row"><dt>Visit instructions</dt><dd>{selectedLocation.visit_instructions}</dd></div></dl>
-          <p className="station-pin-disclaimer">Staff publication makes this reference visible on FindIT. It does not confirm station permission, police partnership, item acceptance, or custody. Confirm details with the station before visiting.</p>
+          <p className="station-pin-disclaimer">This is a public map reference, not confirmation of police publication, station permission, police partnership, item acceptance, or custody. Confirm details with the station before visiting.</p>
         </div>}
         {activeStation && <div className="station-selected-details">
           <div className="station-details-title"><div><p className="eyebrow">SOURCE DETAILS</p><h3>{activeStation.name.value}</h3></div><span>{activeStation.address.status === "conflict" ? "Sources conflict" : "Public-source listing"}</span></div>
@@ -224,18 +243,18 @@ export default function Locator({ stations, locations }: { stations: readonly St
             <SourceDetail label="Coordinates" field={activeStation.coordinates} value={activeStation.coordinates.value?.map(number => number.toFixed(5)).join(", ") ?? missingLabel(activeStation.coordinates, "Map pin")}/>
           </dl>
           {activeStation.kind === "station" && <div className="station-actions">
-            <button className="button secondary" type="button" disabled={!position || !activeStation.coordinates.value || routing} onClick={() => void showRoute(activeStation)}>{routing ? "Loading directions…" : displayedRoute ? "Refresh driving route" : "Show driving route"}</button>
+            <button className="button secondary" type="button" disabled={!position || !shareConsent || !activeStation.coordinates.value || activeStation.coordinates.status !== "sourced" || routing} onClick={() => void showRoute(activeStation)}>{routing ? "Loading walking directions…" : displayedRoute ? "Refresh walking route" : "Show walking route"}</button>
             <Link className="button" href={`/report/lost?station=${encodeURIComponent(activeStation.id)}`}>Report a lost item</Link>
             <p className="station-reference-note">The station choice is saved as your preferred public reference only. It does not send your report to the station or confirm an agreement to receive items.</p>
-            {!position && <p className="report-hint">Set a starting point above to get driving directions.</p>}
+            {!position && <p className="report-hint">Choose a starting point above to get walking directions.</p>}
           </div>}
-          {displayedRoute && <section className="station-route-summary" aria-label="Driving directions">
-            <div className="station-route-metrics"><div><span>Estimated drive</span><strong>{formatTravelTime(displayedRoute.duration_seconds)}</strong></div><div><span>Road distance</span><strong>{routeDistance(displayedRoute.distance_meters)}</strong></div><span>By estimated driving time · no live traffic</span></div>
-            <h4>Driving directions</h4>
-            {displayedRoute.steps.length ? <ol className="station-directions">{displayedRoute.steps.map((step, index) => <li key={`${index}-${step.instruction}`}><span className="station-direction-number">{String(index + 1).padStart(2, "0")}</span><div><strong>{step.instruction}</strong><small>{routeDistance(step.distance_meters)} · about {formatStepTime(step.duration_seconds)}</small></div></li>)}</ol> : <p className="report-hint">Step details were not returned for this route.</p>}
+          {displayedRoute && <section className="station-route-summary" aria-label="Walking directions">
+            <div className="station-route-metrics"><div><span>Estimated walking time</span><strong>About {formatTravelTime(displayedRoute.duration_seconds)}</strong></div><div><span>Walking distance</span><strong>{formatRouteDistance(displayedRoute.distance_meters)}</strong></div><span>Map-based estimate · no live conditions</span></div>
+            <h4>Walking directions</h4>
+            {displayedRoute.steps.length ? <ol className="station-directions">{displayedRoute.steps.map((step, index) => <li key={`${index}-${step.instruction}`}><span className="station-direction-number">{String(index + 1).padStart(2, "0")}</span><div><strong>{step.instruction}</strong><small>{formatRouteDistance(step.distance_meters)} · about {formatStepTime(step.duration_seconds)}</small></div></li>)}</ol> : <p className="report-hint">Step details were not returned for this route.</p>}
           </section>}
         </div>}
-        <p className="station-directory-note">Public references only; FindIT has no confirmed police partners or authorized handover points. Confirm details with the station before visiting. Never share a precise lost-item location on this map. Map and route data © OpenStreetMap contributors · routes by OSRM.</p>
+        <p className="station-directory-note">Public references only; FindIT has no confirmed police partners or authorized handover points. Confirm details with the station before visiting. Never use a precise lost-item location as a route origin. Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a> · walking routes by <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noreferrer">FOSSGIS</a> · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noreferrer">Fix the map</a>.</p>
       </section>
     </div>
     {/* TODO: add a staffed process for station-directory corrections. */}

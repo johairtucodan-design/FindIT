@@ -1,11 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { isRoutingOrigin, parseDrivingRoute, rankRoutedStations } from "@/lib/station-routing";
-import { isGeoPoint } from "@/lib/geospatial";
+import { isEligibleWalkingStation, isRoutingOrigin, isTrustedRouteOrigin, parseWalkingRoute, rankRoutedStations, walkingEndpoint } from "@/lib/station-routing";
+import { codespacesHost } from "@/lib/codespaces.mjs";
 
 export const runtime = "nodejs";
 
-type DirectoryStation = { id: string; type: string; latitude: number | null; longitude: number | null };
+type DirectoryStation = { id: string; type: string; latitude: number | null; longitude: number | null; source_notes: unknown };
 type RequestBody = { mode?: unknown; origin?: unknown; station_id?: unknown; station_ids?: unknown };
 
 let providerQueue = Promise.resolve();
@@ -39,10 +39,10 @@ function pointText(origin: readonly [number, number], destination: readonly [num
 
 export async function POST(request: NextRequest) {
   const originHeader = request.headers.get("origin");
-  if (originHeader) {
-    try {
-      if (new URL(originHeader).host !== request.nextUrl.host) return NextResponse.json({ error: "Route requests must come from FindIT." }, { status: 403 });
-    } catch { return NextResponse.json({ error: "Invalid request origin." }, { status: 403 }); }
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0].trim();
+  const requestHosts = [request.nextUrl.host, request.headers.get("host")].filter((host): host is string => Boolean(host));
+  if (!isTrustedRouteOrigin(originHeader, requestHosts, forwardedHost, codespacesHost(process.env))) {
+    return NextResponse.json({ error: "Route requests must come from FindIT." }, { status: 403 });
   }
 
   let body: RequestBody;
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     ? new Set(body.station_ids.filter((id): id is string => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id)).slice(0, 30))
     : null;
   const destinations = (data as DirectoryStation[])
-    .filter(station => station.type === "public_reference_police_station" && isGeoPoint([station.latitude, station.longitude]))
+    .filter(isEligibleWalkingStation)
     .filter(station => body.mode !== "nearest" || !stationIds || stationIds.has(station.id))
     .map(station => ({ id: station.id, point: [station.latitude as number, station.longitude as number] as const }));
   if (!destinations.length) return NextResponse.json({ error: "No station references have verified map pins for routing." }, { status: 422 });
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
   if (body.mode === "nearest") {
     try {
       const coordinates = [origin, ...destinations.map(({ point }) => point)].map(([latitude, longitude]) => `${longitude},${latitude}`).join(";");
-      const url = new URL(`https://router.project-osrm.org/table/v1/driving/${coordinates}`);
+      const url = walkingEndpoint("table", coordinates);
       url.searchParams.set("sources", "0");
       url.searchParams.set("destinations", destinations.map((_, index) => String(index + 1)).join(";"));
       url.searchParams.set("annotations", "duration,distance");
@@ -83,14 +83,14 @@ export async function POST(request: NextRequest) {
   const destination = destinations.find(station => station.id === body.station_id);
   if (!destination) return NextResponse.json({ error: "That station has no eligible public map pin." }, { status: 404 });
   try {
-    const url = new URL(`https://router.project-osrm.org/route/v1/driving/${pointText(origin, destination.point)}`);
+    const url = walkingEndpoint("route", pointText(origin, destination.point));
     url.searchParams.set("steps", "true");
     url.searchParams.set("geometries", "geojson");
     url.searchParams.set("overview", "full");
     url.searchParams.set("generate_hints", "false");
-    const route = parseDrivingRoute(await osrmJson(url, new URL("/stations", request.nextUrl.origin).toString()));
+    const route = parseWalkingRoute(await osrmJson(url, new URL("/stations", request.nextUrl.origin).toString()));
     return route ? NextResponse.json({ route }) : NextResponse.json({ error: "The routing service returned incomplete directions. Try another station." }, { status: 502 });
   } catch {
-    return NextResponse.json({ error: "A driving route is unavailable for that station right now." }, { status: 503 });
+    return NextResponse.json({ error: "A walking route is unavailable for that station right now." }, { status: 503 });
   }
 }

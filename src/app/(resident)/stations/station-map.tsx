@@ -104,7 +104,7 @@ export default function StationMap({ stations, locations = [], selectedKey, acti
         const key = stationSelectionKey("location", location.id), selected = key === selectedRef.current;
         const marker = L.marker([location.latitude, location.longitude], {
           title: location.name,
-          alt: `Select suggested location ${location.name}`,
+          alt: `Select unverified public map reference ${location.name}`,
           keyboard: true,
           icon: L.divIcon({ className: "findit-location-icon", html: '<span class="findit-location-marker"></span>', iconSize: [30, 38], iconAnchor: [15, 35] }),
           zIndexOffset: selected ? 1100 : 100,
@@ -158,5 +158,5 @@ export default function StationMap({ stations, locations = [], selectedKey, acti
     return () => window.clearTimeout(timer);
   }, [active, selectedKey]);
 
-  return <div ref={node} className="station-map-canvas" role="region" aria-label={pickMode ? "Select a proposed location on the interactive map" : "Interactive map of sourced station references and staff-published public pins"}/>;
+  return <div ref={node} className="station-map-canvas" role="region" aria-label={pickMode ? "Select a proposed location on the interactive map" : "Interactive map of public station references and unverified location references"}/>;
 }

@@ -2,7 +2,7 @@ import { isGeoPoint, type GeoPoint } from "./geospatial.ts";
 
 export type RoutedStation = { station_id: string; duration_seconds: number; distance_meters: number };
 export type RouteStep = { instruction: string; distance_meters: number; duration_seconds: number };
-export type DrivingRoute = {
+export type WalkingRoute = {
   distance_meters: number;
   duration_seconds: number;
   coordinates: [latitude: number, longitude: number][];
@@ -10,6 +10,33 @@ export type DrivingRoute = {
 };
 
 type StationPoint = { id: string; point: unknown };
+
+export function walkingEndpoint(service: "route" | "table", coordinates: string) {
+  return new URL(`https://routing.openstreetmap.de/routed-foot/${service}/v1/foot/${coordinates}`);
+}
+
+export function isTrustedRouteOrigin(originHeader: unknown, requestHosts: readonly string[], forwardedHost: unknown, codespaceHost: string | undefined) {
+  if (typeof originHeader !== "string") return false;
+  try {
+    const origin = new URL(originHeader);
+    if (origin.protocol !== "https:" && origin.protocol !== "http:") return false;
+    if (requestHosts.includes(origin.host)) return true;
+    return Boolean(codespaceHost && forwardedHost === codespaceHost && origin.host === "localhost:3000");
+  } catch { return false; }
+}
+
+export function isEligibleWalkingStation(station: {
+  type?: unknown; latitude?: unknown; longitude?: unknown; source_notes?: unknown;
+}) {
+  if (station.type !== "public_reference_police_station" || !isGeoPoint([station.latitude, station.longitude])) return false;
+  if (!station.source_notes || typeof station.source_notes !== "object") return false;
+  const fields = (station.source_notes as Record<string, unknown>).fields;
+  if (!fields || typeof fields !== "object") return false;
+  const coordinates = (fields as Record<string, unknown>).coordinates;
+  return Boolean(coordinates && typeof coordinates === "object" && (coordinates as Record<string, unknown>).status === "sourced");
+}
+
+export const publicPinSourceLabel = "Unverified location reference";
 
 export function rankRoutedStations(stations: readonly StationPoint[], durations: unknown, distances: unknown): RoutedStation[] {
   if (!Array.isArray(durations) || !Array.isArray(distances)) return [];
@@ -40,7 +67,7 @@ function instructionFor(step: Record<string, unknown>) {
   return instruction;
 }
 
-export function parseDrivingRoute(value: unknown): DrivingRoute | null {
+export function parseWalkingRoute(value: unknown): WalkingRoute | null {
   if (!value || typeof value !== "object") return null;
   const result = value as Record<string, unknown>;
   if (result.code !== "Ok" || !Array.isArray(result.routes) || !result.routes[0]) return null;
@@ -75,6 +102,10 @@ export function formatTravelTime(seconds: number) {
   if (minutes < 60) return `${minutes} min`;
   const hours = Math.floor(minutes / 60), remainder = minutes % 60;
   return remainder ? `${hours} hr ${remainder} min` : `${hours} hr`;
+}
+
+export function formatRouteDistance(meters: number) {
+  return meters >= 1_000 ? `${(meters / 1_000).toFixed(1)} km` : `${Math.round(meters)} m`;
 }
 
 export function formatStepTime(seconds: number) {

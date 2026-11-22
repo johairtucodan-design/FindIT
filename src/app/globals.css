@@ -129,11 +129,31 @@ input[aria-invalid=true], textarea[aria-invalid=true] { border-color: #b91c1c; }
 .nearby-result .eyebrow { margin:0; color:#17634f; font-size:.62rem; }
 .nearby-result strong { color:var(--ink); font-size:.92rem; }
 .nearby-result span,.station-map-pick-hint { color:var(--muted); font-size:.75rem; line-height:1.45; }
+.nearby-result small { color:var(--muted); font-size:.68rem; }
+.walking-results { margin-top:.8rem; padding:.25rem; border:1px solid #d5e9df; border-radius:1rem; background:linear-gradient(145deg,#f4faf6,#fff 72%); box-shadow:0 12px 26px #173b300d; }
+.walking-results .nearby-result { margin:0; border:0; border-radius:.8rem; background:radial-gradient(ellipse at 90% 0,#dcefe4 0,transparent 60%),#f6fbf7; }
+.walking-rank-badge { flex:none; border:1px solid #c8e2d5; border-radius:2rem; padding:.45rem .65rem; color:#17634f !important; background:#fff; font-size:.62rem !important; font-weight:850; letter-spacing:.04em; }
+.walking-alternatives { margin:.6rem .5rem .35rem; padding:.7rem .7rem .25rem; border-top:1px solid #dfece5; }
+.walking-alternatives > .eyebrow { margin:0 0 .4rem; color:var(--muted); font-size:.62rem; }
+.walking-alternatives ul { display:grid; gap:.35rem; margin:0; padding:0; list-style:none; }
+.walking-alternative { display:flex; width:100%; align-items:center; gap:.65rem; padding:.55rem .65rem; border:1px solid transparent; border-radius:.7rem; color:var(--ink); background:#ffffffc9; text-align:left; cursor:pointer; transition:border-color .16s,background .16s,transform .16s; }
+.walking-alternative:hover:not(:disabled) { transform:translateY(-1px); border-color:#b8d8c7; background:#fff; }
+.walking-alternative:focus-visible { outline:3px solid var(--primary); outline-offset:2px; }
+.walking-alternative:disabled { cursor:wait; opacity:.65; }
+.walking-alternative.is-selected { border-color:#8fc0a6; background:#eff8f1; }
+.walking-alternative-number { display:grid; width:1.8rem; height:1.8rem; flex:none; place-items:center; border-radius:.55rem; color:var(--primary); background:#e8f3ed; font-size:.68rem; font-weight:850; }
+.walking-alternative > span:nth-child(2) { display:grid; min-width:0; gap:.08rem; }
+.walking-alternative strong { overflow:hidden; font-size:.78rem; text-overflow:ellipsis; white-space:nowrap; }
+.walking-alternative small { color:var(--muted); font-size:.67rem; }
+.walking-alternative-action { margin-left:auto; color:var(--primary); font-size:.68rem; font-weight:800; }
 .station-routing-consent { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-top:.8rem; padding:.9rem 1rem; border:1px solid var(--line); border-radius:.85rem; background:linear-gradient(125deg,#f4faf8,#fff 72%); }
-.station-routing-consent > div { display:grid; gap:.25rem; max-width:48rem; }
+.station-routing-consent > div { display:grid; gap:.35rem; max-width:48rem; }
 .station-routing-consent .eyebrow { margin:0; color:#17634f; font-size:.62rem; }
 .station-routing-consent p:not(.eyebrow) { color:var(--muted); font-size:.76rem; line-height:1.5; }
+.station-routing-links { display:flex; flex-wrap:wrap; gap:.3rem .85rem; }
 .station-routing-consent a { width:max-content; color:var(--primary); font-size:.72rem; text-decoration:underline; text-underline-offset:2px; }
+.station-consent-check { display:flex; align-items:flex-start; gap:.5rem; margin-top:.25rem; color:var(--ink); font-size:.72rem; line-height:1.45; cursor:pointer; }
+.station-consent-check input { width:1rem; height:1rem; flex:none; margin:.1rem 0 0; accent-color:var(--primary); }
 .station-routing-consent .button { flex:none; }
 .station-map-pick-hint { margin-top:.5rem; }
 .station-map-frame.is-picking .leaflet-container { cursor:crosshair; }
@@ -217,6 +237,7 @@ input[aria-invalid=true], textarea[aria-invalid=true] { border-color: #b91c1c; }
 .station-directions strong { font-size:.76rem; line-height:1.4; }
 .station-directions small { color:var(--muted); font-size:.67rem; }
 .station-directory-note { margin-top:.8rem; color:var(--muted); font-size:.72rem; line-height:1.55; }
+.station-directory-note a { color:var(--primary); text-decoration:underline; text-underline-offset:2px; }
 .station-pin-list { display:grid; gap:.65rem; margin:1rem 0 0; padding:1rem 0 0; border-top:1px solid var(--line); list-style:none; }
 .station-pin-list h3 { font-size:.9rem; font-weight:800; }
 .station-pin-option { display:grid; width:100%; gap:.35rem; padding:.8rem; border:1px solid var(--line); border-radius:.8rem; background:#fff; text-align:left; cursor:pointer; transition:border-color .18s,background .18s; }
@@ -225,6 +246,14 @@ input[aria-invalid=true], textarea[aria-invalid=true] { border-color: #b91c1c; }
 .station-pin-option strong { font-size:.86rem; }
 .station-pin-option span,.station-pin-option small { color:var(--muted); font-size:.72rem; line-height:1.45; }
 .station-pin-disclaimer { margin-top:.7rem; padding:.7rem; border:1px solid #f1d38a; border-radius:.7rem; color:#704800; background:#fff9e9; font-size:.72rem; line-height:1.5; }
+.pin-save-confirmation { display:grid; gap:.8rem; padding:1rem; border:1px solid #b9dfca; border-radius:1rem; background:radial-gradient(ellipse at 100% 0,#dff2e5 0,transparent 55%),linear-gradient(145deg,#f1faf4,#fff 72%); box-shadow:0 14px 30px #173b3012; animation:pin-confirm-in .24s ease-out both; }
+.pin-save-confirmation .eyebrow { margin:0 0 .2rem; color:#17634f; font-size:.64rem; font-weight:850; }
+.pin-save-confirmation h3 { font-size:1rem; font-weight:850; letter-spacing:-.02em; }
+.pin-save-confirmation p:not(.eyebrow) { margin-top:.1rem; color:var(--muted); font-size:.76rem; }
+.pin-save-confirmation small { display:block; margin-top:.4rem; color:var(--muted); font-size:.7rem; line-height:1.5; }
+.pin-save-actions { display:flex; flex-wrap:wrap; gap:.5rem; }
+.pin-save-actions .button { min-height:2.6rem; }
+@keyframes pin-confirm-in { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
 .station-location-layout { display:grid; grid-template-columns:minmax(16rem,.8fr) minmax(0,1.2fr); gap:1rem; align-items:start; }
 .station-location-list { display:grid; gap:.65rem; margin:0; padding:0; list-style:none; }
 .station-location-card { display:grid; gap:.4rem; padding:.9rem; border:1px solid var(--line); border-radius:.8rem; background:#fff; }

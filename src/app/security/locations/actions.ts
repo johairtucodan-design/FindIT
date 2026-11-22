@@ -23,12 +23,19 @@ async function saveLocation(target: string | null, form: FormData) {
   if (target && !isUuid(target)) return { error: "Invalid location reference." };
   const value = locationInput(form);
   if ("error" in value) return value;
-  const { error } = target
+  const { data, error } = target
     ? await client.rpc("update_station_location", { p_target: target, p_name: value.name, p_description: value.description, p_visit_instructions: value.visitInstructions, p_latitude: value.latitude, p_longitude: value.longitude })
     : await client.rpc("propose_station_location", { p_station: stationId, p_name: value.name, p_description: value.description, p_visit_instructions: value.visitInstructions, p_latitude: value.latitude, p_longitude: value.longitude });
   if (error) return { error: error.code === "42501" ? "This pin is outside your assigned station access." : error.message || "The location could not be saved." };
   revalidatePath("/security/locations"); revalidatePath("/manager"); revalidatePath("/stations");
-  return { success: target ? "Map pin updated and published." : "Map pin published and visible on FindIT." };
+  const pinId = target ?? (typeof data === "string" ? data : "");
+  const { data: directory } = await client.rpc("station_directory");
+  const stationName = Array.isArray(directory) ? (directory as { id?: string; name?: string }[]).find(station => station.id === stationId)?.name : null;
+  const name = value.name;
+  return {
+    success: target ? "Map reference updated." : "Map reference added.",
+    ...(isUuid(pinId) ? { pin: { id: pinId, name, stationName: stationName || "Selected station" } } : {}),
+  };
 }
 
 export async function proposeStationLocation(form: FormData) {
