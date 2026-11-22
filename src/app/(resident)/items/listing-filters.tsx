@@ -8,18 +8,18 @@ import { Icon } from "@/app/glyph";
 
 export type Filters = Record<"q" | "category" | "area" | "status" | "kind", string>;
 
-export default function ListingFilters({ filters, filterKey, statuses, clearUrl }: {
-  filters: Filters; filterKey: string; statuses: string[]; clearUrl: string;
+export default function ListingFilters({ filters, statuses, clearUrl }: {
+  filters: Filters; statuses: string[]; clearUrl: string;
 }) {
-  const [draft, setDraft] = useState({ filterKey, fields: filters });
-  if (draft.filterKey !== filterKey) setDraft({ filterKey, fields: filters });
-  const change = (field: keyof Filters, value: string) => setDraft({ filterKey, fields: { ...draft.fields, [field]: value } });
-  return <Form action="/items" scroll={false} className="panel form-grid filter-grid my-6">
+  const [fields, setFields] = useState(filters);
+  const change = (field: keyof Filters, value: string) => setFields({ ...fields, [field]: value });
+  const activeCount = Number(Boolean(filters.category)) + Number(Boolean(filters.area)) + Number(Boolean(filters.status));
+  return <Form action="/items" scroll={false} className="panel listing-search-form my-5">
     <input type="hidden" name="kind" value={filters.kind}/>
-    <label>Keyword<input name="q" value={draft.fields.q} onChange={e => change("q", e.target.value)} placeholder="e.g. silver keys"/></label>
-    <label>Category<input name="category" value={draft.fields.category} onChange={e => change("category", e.target.value)}/></label>
-    <label>Approximate area<input name="area" value={draft.fields.area} onChange={e => change("area", e.target.value)}/></label>
-    <label>Status<select name="status" value={draft.fields.status} onChange={e => change("status", e.target.value)}><option value="">All statuses</option>{statuses.map(s => <option key={s} value={s}>{statusLabel(s)}</option>)}</select></label>
-    <div className="flex flex-wrap items-center gap-3"><button className="button"><Icon name="search" size={16}/> Search</button><Link href={clearUrl} className="text-link">Clear</Link></div>
+    <div className="listing-search-row"><label htmlFor="listing-search">Search items<input id="listing-search" name="q" type="search" value={fields.q} onChange={e => change("q", e.target.value)} placeholder="Try wallet, keys, or umbrella"/></label><button className="button"><Icon name="search" size={16}/> Search</button></div>
+    <details className="listing-filter-details" open={activeCount > 0}>
+      <summary><span><Icon name="list" size={17}/> More filters</span>{activeCount > 0 && <small>{activeCount} active</small>}</summary>
+      <div className="listing-filter-fields"><label>Category<input name="category" value={fields.category} onChange={e => change("category", e.target.value)} placeholder="e.g. Electronics"/></label><label>Approximate area<input name="area" value={fields.area} onChange={e => change("area", e.target.value)} placeholder="e.g. Pala-o"/></label><label>Status<select name="status" value={fields.status} onChange={e => change("status", e.target.value)}><option value="">All statuses</option>{statuses.map(s => <option key={s} value={s}>{statusLabel(s)}</option>)}</select></label><div className="listing-filter-actions"><button className="button secondary">Apply filters</button><Link href={clearUrl} className="text-link">Clear filters</Link></div></div>
+    </details>
   </Form>;
 }

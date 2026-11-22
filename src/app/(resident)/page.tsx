@@ -4,9 +4,10 @@ import { redirect } from "next/navigation";
 import { Icon } from "@/app/glyph";
 
 const paths = [
-  { icon: "search", number: "01", title: "I lost something", text: "Share what went missing and where you last remember seeing it.", href: "/report/lost", action: "Report a lost item" },
-  { icon: "box", number: "02", title: "I found something", text: "Record a useful description, then choose a station for handover.", href: "/report/found", action: "Report a found item" },
-  { icon: "list", number: "03", title: "I’m looking around", text: "Browse community reports or check station information for Iligan City.", href: "/items", action: "Browse reports" },
+  { icon: "search", number: "01", title: "I lost an item", text: "Share what went missing and where you last saw it.", href: "/report/lost", action: "Start a lost report" },
+  { icon: "box", number: "02", title: "I found an item", text: "Describe it and keep any identifying detail private.", href: "/report/found", action: "Start a found report" },
+  { icon: "list", number: "03", title: "Browse reports", text: "Explore approved lost and found listings.", href: "/items", action: "Browse items" },
+  { icon: "pin", number: "04", title: "Find a station", text: "Review public references and route options in Iligan City.", href: "/stations", action: "Explore stations" },
 ] as const;
 
 export default async function Home({searchParams}: {searchParams: Promise<{code?:string}>}) {
@@ -19,10 +20,7 @@ export default async function Home({searchParams}: {searchParams: Promise<{code?
         <p className="hero-label"><span/> FINDIT <i/> ILIGAN CITY</p>
         <h1>Lost it?<br/>Found it?<br/><em>Start here.</em></h1>
         <p>A simple place to report lost property, share found items, and keep track of what happens next.</p>
-        <div className="hero-actions">
-          <Link className="button hero-primary" href="/report/lost"><Icon name="plus" size={18}/> Make a report</Link>
-          <Link className="button hero-secondary" href="/items">Browse reports <Icon name="arrow" size={18}/></Link>
-        </div>
+        <p className="hero-next-step">Choose a next step below.</p>
         <p className="hero-caption"><Icon name="shield" size={16}/> Private details stay limited to authorized viewers.</p>
       </div>
       <div className="hero-visual">
@@ -45,10 +43,7 @@ export default async function Home({searchParams}: {searchParams: Promise<{code?
     </section>
 
     <section className="home-section" aria-labelledby="start-title">
-      <div className="section-heading-row">
-        <div><p className="eyebrow">A GOOD PLACE TO START</p><h2 id="start-title" className="page-title">What brings you here?</h2></div>
-        <p className="section-aside">A few clear steps. Your report stays yours to follow.</p>
-      </div>
+      <div className="section-heading-row"><div><p className="eyebrow">START HERE</p><h2 id="start-title" className="page-title">What do you need?</h2></div><p className="section-aside">Choose one clear path. You can review details before submitting anything.</p></div>
       <div className="quick-grid home-paths">
         {paths.map(path=><Link className="panel quick-card" href={path.href} key={path.href}>
           <span className="path-number">{path.number}</span>
@@ -65,12 +60,6 @@ export default async function Home({searchParams}: {searchParams: Promise<{code?
         <li><span>02</span><div><h3>Arrange a handover</h3><p>For found items, select an intended station and take the item there.</p><small>Found reports start as Pending Surrender.</small></div></li>
         <li><span>03</span><div><h3>Follow the status</h3><p>Station staff can record receipt after the item is handed over. Updates appear on the report.</p></div></li>
       </ol>
-    </section>
-
-    <section className="station-feature" aria-labelledby="station-title">
-      <span className="feature-icon"><Icon name="pin" size={24}/></span>
-      <div><p className="eyebrow">ILIGAN CITY</p><h2 id="station-title">Know where a handover could happen.</h2><p>Explore the station map and review the public references behind each listing. Details may need confirmation.</p></div>
-      <Link className="button secondary" href="/stations">Explore stations <Icon name="arrow" size={17}/></Link>
     </section>
 
     <section className="home-about" aria-labelledby="about-title">

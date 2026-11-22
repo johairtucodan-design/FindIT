@@ -1,12 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { isEligibleWalkingStation, isRoutingOrigin, isTrustedRouteOrigin, parseWalkingRoute, rankRoutedStations, walkingEndpoint } from "@/lib/station-routing";
+import { isEligibleRouteStation, isRoutingOrigin, isTrustedRouteOrigin, parseTravelRoute, rankRoutedStations, travelEndpoint, travelModeLabel, type TravelMode } from "@/lib/station-routing";
 import { codespacesHost } from "@/lib/codespaces.mjs";
 
 export const runtime = "nodejs";
 
 type DirectoryStation = { id: string; type: string; latitude: number | null; longitude: number | null; source_notes: unknown };
-type RequestBody = { mode?: unknown; origin?: unknown; station_id?: unknown; station_ids?: unknown };
+type RequestBody = { mode?: unknown; origin?: unknown; station_id?: unknown; station_ids?: unknown; travel_mode?: unknown };
 
 let providerQueue = Promise.resolve();
 let lastProviderRequest = 0;
@@ -18,7 +18,7 @@ async function osrmJson(url: URL, referer: string) {
     lastProviderRequest = Date.now();
     const response = await fetch(url, {
       cache: "no-store",
-      signal: AbortSignal.timeout(8_000),
+      signal: AbortSignal.timeout(15_000),
       headers: {
         "User-Agent": "FindIT/1.0 (public station route lookup; https://find-it-taupe.vercel.app)",
         Referer: referer,
@@ -59,38 +59,44 @@ export async function POST(request: NextRequest) {
     ? new Set(body.station_ids.filter((id): id is string => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id)).slice(0, 30))
     : null;
   const destinations = (data as DirectoryStation[])
-    .filter(isEligibleWalkingStation)
+    .filter(isEligibleRouteStation)
     .filter(station => body.mode !== "nearest" || !stationIds || stationIds.has(station.id))
     .map(station => ({ id: station.id, point: [station.latitude as number, station.longitude as number] as const }));
   if (!destinations.length) return NextResponse.json({ error: "No station references have verified map pins for routing." }, { status: 422 });
 
   if (body.mode === "nearest") {
+    if (body.travel_mode !== "foot" && body.travel_mode !== "car") return NextResponse.json({ error: "Choose walking or driving for this route comparison." }, { status: 400 });
+    const travelMode = body.travel_mode;
+    const coordinates = [origin, ...destinations.map(({ point }) => point)].map(([latitude, longitude]) => `${longitude},${latitude}`).join(";");
+    const referer = new URL("/stations", request.nextUrl.origin).toString();
     try {
-      const coordinates = [origin, ...destinations.map(({ point }) => point)].map(([latitude, longitude]) => `${longitude},${latitude}`).join(";");
-      const url = walkingEndpoint("table", coordinates);
+      const url = travelEndpoint(travelMode, "table", coordinates);
       url.searchParams.set("sources", "0");
       url.searchParams.set("destinations", destinations.map((_, index) => String(index + 1)).join(";"));
       url.searchParams.set("annotations", "duration,distance");
-      const table = await osrmJson(url, new URL("/stations", request.nextUrl.origin).toString()) as { durations?: unknown[]; distances?: unknown[] };
-      const ranks = rankRoutedStations(destinations, table.durations?.[0], table.distances?.[0]);
-      return NextResponse.json({ ranked: ranks });
-    } catch {
-      return NextResponse.json({ error: "The routing service did not return station travel times. Try again later." }, { status: 503 });
+      const table = await osrmJson(url, referer) as { durations?: unknown[]; distances?: unknown[] };
+      const ranked = rankRoutedStations(destinations, table.durations?.[0], table.distances?.[0]);
+      return NextResponse.json({ ranking: { mode: travelMode, ranked, error: ranked.length ? undefined : `No reachable ${travelModeLabel(travelMode)} route was returned.` } });
+    } catch (error) {
+      console.error(`FOSSGIS ${travelMode} table request failed`, error instanceof Error ? error.name : "Unknown provider error");
+      return NextResponse.json({ ranking: { mode: travelMode, ranked: [], error: `${travelModeLabel(travelMode)} routes are unavailable right now.` } });
     }
   }
 
   if (typeof body.station_id !== "string" || !/^[0-9a-f-]{36}$/i.test(body.station_id)) return NextResponse.json({ error: "Choose a station from the public list." }, { status: 400 });
+  if (body.travel_mode !== "foot" && body.travel_mode !== "car") return NextResponse.json({ error: "Choose walking or driving directions." }, { status: 400 });
   const destination = destinations.find(station => station.id === body.station_id);
   if (!destination) return NextResponse.json({ error: "That station has no eligible public map pin." }, { status: 404 });
   try {
-    const url = walkingEndpoint("route", pointText(origin, destination.point));
+    const travelMode = body.travel_mode;
+    const url = travelEndpoint(travelMode, "route", pointText(origin, destination.point));
     url.searchParams.set("steps", "true");
     url.searchParams.set("geometries", "geojson");
     url.searchParams.set("overview", "full");
     url.searchParams.set("generate_hints", "false");
-    const route = parseWalkingRoute(await osrmJson(url, new URL("/stations", request.nextUrl.origin).toString()));
+    const route = parseTravelRoute(await osrmJson(url, new URL("/stations", request.nextUrl.origin).toString()));
     return route ? NextResponse.json({ route }) : NextResponse.json({ error: "The routing service returned incomplete directions. Try another station." }, { status: 502 });
   } catch {
-    return NextResponse.json({ error: "A walking route is unavailable for that station right now." }, { status: 503 });
+    return NextResponse.json({ error: `A ${travelModeLabel(body.travel_mode)} route is unavailable for that station right now.` }, { status: 503 });
   }
 }

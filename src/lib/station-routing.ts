@@ -2,7 +2,8 @@ import { isGeoPoint, type GeoPoint } from "./geospatial.ts";
 
 export type RoutedStation = { station_id: string; duration_seconds: number; distance_meters: number };
 export type RouteStep = { instruction: string; distance_meters: number; duration_seconds: number };
-export type WalkingRoute = {
+export type TravelMode = "foot" | "car";
+export type TravelRoute = {
   distance_meters: number;
   duration_seconds: number;
   coordinates: [latitude: number, longitude: number][];
@@ -11,8 +12,13 @@ export type WalkingRoute = {
 
 type StationPoint = { id: string; point: unknown };
 
-export function walkingEndpoint(service: "route" | "table", coordinates: string) {
-  return new URL(`https://routing.openstreetmap.de/routed-foot/${service}/v1/foot/${coordinates}`);
+export function travelEndpoint(mode: TravelMode, service: "route" | "table", coordinates: string) {
+  const profile = mode === "foot" ? "foot" : "driving";
+  return new URL(`https://routing.openstreetmap.de/routed-${mode}/${service}/v1/${profile}/${coordinates}`);
+}
+
+export function travelModeLabel(mode: TravelMode) {
+  return mode === "foot" ? "walking" : "driving";
 }
 
 export function isTrustedRouteOrigin(originHeader: unknown, requestHosts: readonly string[], forwardedHost: unknown, codespaceHost: string | undefined) {
@@ -25,7 +31,7 @@ export function isTrustedRouteOrigin(originHeader: unknown, requestHosts: readon
   } catch { return false; }
 }
 
-export function isEligibleWalkingStation(station: {
+export function isEligibleRouteStation(station: {
   type?: unknown; latitude?: unknown; longitude?: unknown; source_notes?: unknown;
 }) {
   if (station.type !== "public_reference_police_station" || !isGeoPoint([station.latitude, station.longitude])) return false;
@@ -67,7 +73,7 @@ function instructionFor(step: Record<string, unknown>) {
   return instruction;
 }
 
-export function parseWalkingRoute(value: unknown): WalkingRoute | null {
+export function parseTravelRoute(value: unknown): TravelRoute | null {
   if (!value || typeof value !== "object") return null;
   const result = value as Record<string, unknown>;
   if (result.code !== "Ok" || !Array.isArray(result.routes) || !result.routes[0]) return null;

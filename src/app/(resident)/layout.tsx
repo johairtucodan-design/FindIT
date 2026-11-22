@@ -4,6 +4,7 @@ import { getViewer } from "@/lib/supabase/server";
 import { signOut } from "./auth/actions";
 import InviteRedirect from "./auth/invite-redirect";
 import ResidentNavigation from "./resident-navigation";
+import ResidentTabBar from "./resident-tab-bar";
 
 export default async function ResidentLayout({ children }: { children: React.ReactNode }) {
   const { user } = await getViewer();
@@ -16,6 +17,7 @@ export default async function ResidentLayout({ children }: { children: React.Rea
         {user ? <form action={signOut} className="header-action"><button className="button secondary">Sign out</button></form> : <Link href="/auth" className="button secondary header-action">Sign in <Icon name="arrow" size={16}/></Link>}
       </div>
     </header>
+    <ResidentTabBar/>
     <main id="main" className="site-width site-main">{children}</main>
     <footer className="site-width site-footer">
       <div className="footer-brand"><Link href="/" className="brand"><span className="brand-icon"><Icon name="mark" size={18}/></span><span className="brand-name">Find<span>IT</span></span></Link><p>Community lost &amp; found · Iligan City</p></div>

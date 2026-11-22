@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 const shapes = {
   mark: <><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 5 5m-11-9 1 1 2-3"/></>,
+  home: <><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></>,
   search: <><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></>,
   pin: <><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2"/></>,
   box: <><path d="M3 7h18v4H3zm2 4v9h14v-9m-10 4h6"/></>,

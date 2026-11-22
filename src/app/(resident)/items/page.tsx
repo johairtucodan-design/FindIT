@@ -38,10 +38,12 @@ async function Results({ filters }: { filters: Filters }) {
   }));
   const photoUrls = new Map(photoEntries);
   return <ul className="listing-grid">{reports.map(r => <li key={r.id}><Link className="panel report-card quick-card h-full" href={`/items/${r.id}`}>
-    <div className="flex flex-wrap gap-2 items-center justify-between">{r.is_demo && <span className="demo-badge">Demo example</span>}<ReportKind kind={r.kind}/><span className={`status ${r.status === "pending_surrender" ? "pending" : ""}`}>{statusLabel(r.status)}</span></div>
-    {r.is_demo && <DemoPhoto id={r.id} isDemo/>}
-    {!r.is_demo && ownPaths.has(r.id) && <PrivateReportPhoto itemId={r.id} title={r.title} initialUrl={photoUrls.get(r.id) ?? null} compact/>}
-    <h2 className="font-bold text-xl">{r.title}</h2><p>{r.category} · {r.location_text} · {r.occurred_at.slice(0,10)}</p><span className="quick-action">{r.is_demo ? "View demo example" : "View item"} <Icon name="arrow" size={17}/></span>
+    <div className="report-card-media">
+      {r.is_demo ? <DemoPhoto id={r.id} isDemo/> : ownPaths.has(r.id) ? <PrivateReportPhoto itemId={r.id} title={r.title} initialUrl={photoUrls.get(r.id) ?? null} compact/> : <div className="report-card-placeholder"><Icon name="box" size={24}/><span>No public image</span></div>}
+    </div>
+    <div className="report-card-content"><div className="report-card-badges">{r.is_demo && <span className="demo-badge">Demo example</span>}<ReportKind kind={r.kind}/><span className={`status ${r.status === "pending_surrender" ? "pending" : ""}`}>{statusLabel(r.status)}</span></div>
+      <h2>{r.title}</h2><p className="report-card-meta">{r.category} <span aria-hidden="true">·</span> {r.occurred_at.slice(0,10)}</p><p className="report-card-location">{r.location_text}</p><span className="quick-action">View details <Icon name="arrow" size={17}/></span>
+    </div>
   </Link></li>)}</ul>;
 }
 
@@ -56,8 +58,8 @@ export default async function Listings({ searchParams }: { searchParams: Promise
     <aside className="demo-disclaimer mt-5">Synthetic coursework examples appear alongside community listings and are labeled <strong>Demo example</strong>. Their photos are representative illustrations. Found examples marked <strong>Reported — Not Received</strong> do not mean police hold the item. Matching stays within the demo or real reports.</aside>
     <p className="listing-photo-note">Only approved listings appear here. Signed-in reporters see their own uploaded photos; other reporters’ photos stay private to them and authorized staff.</p>
     <nav className="listing-tabs mt-6" aria-label="Report type">{tabs.map(([kind, label]) => <Link key={kind} className="button secondary" href={listingsUrl({ ...filters, kind })} aria-current={kind === filters.kind ? "page" : undefined}>{label}</Link>)}</nav>
-    <ListingFilters filters={filters} filterKey={listingsUrl(filters)} statuses={statuses} clearUrl={listingsUrl({ kind: filters.kind })}/>
-    <Suspense key={listingsUrl(filters)} fallback={<p className="panel muted" role="status">Loading listings…</p>}>
+    <ListingFilters key={`filters:${listingsUrl(filters)}`} filters={filters} statuses={statuses} clearUrl={listingsUrl({ kind: filters.kind })}/>
+    <Suspense key={`results:${listingsUrl(filters)}`} fallback={<p className="panel muted" role="status">Loading listings…</p>}>
       <Results filters={filters}/>
     </Suspense>
   </>;
