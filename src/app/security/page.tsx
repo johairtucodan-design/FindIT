@@ -5,9 +5,21 @@ import {isOperationalReport} from "@/lib/operations-queue";
 import WorkflowForm from "@/app/workflow-form";
 import {operate} from "@/app/operations";
 import ReportKind from "@/app/report-kind";
+import GuestReportList, { type GuestReportRow } from "./guest-report-list";
 
 export default async function Security({searchParams}:{searchParams:Promise<{q?:string;status?:string;tab?:string}>}) {
  const {client,profile}=await requireRole(["officer","admin"]);const filters=await searchParams;
+ if(filters.tab==="guest"){
+   const {data:guestRows,error:guestError}=await client.from("guest_reports").select("id,kind,title,category,color,description,location_text,occurred_at,contact_method,private_details,preferred_station_id,latitude,longitude,created_at").eq("status","pending_review").order("created_at",{ascending:true}).limit(100);
+   if(guestError)throw new Error("Unable to load guest reports");
+   const {data:names}=await client.from("stations").select("id,name");
+   const stationNames=Object.fromEntries((names??[]).map((row:{id:string;name:string})=>[row.id,row.name]));
+   return <>
+     <div className="workspace-heading"><p className="eyebrow">Assigned-station workspace</p><h1 className="page-title">Guest reports</h1><p className="muted">Found reports submitted without an account. Review each one before you decide. Nothing here is published automatically.</p></div>
+     <form className="panel form-grid filter-grid my-5" action="/security"><input type="hidden" name="tab" value="guest"/><label>Workspace<select name="tab" defaultValue="guest"><option value="receiving">Receiving queue</option><option value="review">Publication review</option><option value="inventory">Active custody inventory</option><option value="guest">Guest reports</option></select></label><button className="button secondary">Open</button></form>
+     <GuestReportList reports={(guestRows??[]) as GuestReportRow[]} stationNames={stationNames}/>
+   </>;
+ }
  const {data,error}=await client.rpc("staff_reports");if(error)throw new Error("Unable to load station records");
  const reports=(data??[]) as (Report&{archived_at?:string|null})[];
  const q=typeof filters.q==="string"?filters.q.toLowerCase():"";
@@ -28,7 +40,7 @@ export default async function Security({searchParams}:{searchParams:Promise<{q?:
    {assignedStation?.is_demo&&<p className="notice">This is a legacy demo-station assignment. Synthetic records are excluded from operations. Ask an admin to assign this account to an approved public reference before publishing map pins.</p>}
    {(profile.role==="officer"||profile.role==="admin")&&<section className="panel flex flex-wrap items-center justify-between gap-4 my-5" aria-label="Manage station map pins"><div><p className="eyebrow">YOUR STATION MAP</p><h2 className="text-lg font-bold">Add a map pin</h2><p className="muted mt-1 text-sm">{profile.role==="admin"?"Choose an approved public-reference station, then place its pin.":"Add a public-reference location under your assigned station."} Pins publish directly without admin review.</p></div><Link className="button" href="/security/locations">Open map pin setup</Link></section>}
    <p className="station-pin-disclaimer">FindIT is a coursework prototype. Account assignment does not verify police employment, partnership, receiving service, or custody.</p>
-   <form className="panel form-grid filter-grid my-5"><label>Reference or title<input name="q" defaultValue={q}/></label><label>Workspace<select name="tab" defaultValue={view}><option value="receiving">Receiving queue</option><option value="review">Publication review</option><option value="inventory">Active custody inventory</option></select></label><label>Status<select name="status" defaultValue={filters.status??""}><option value="">All</option>{["open","pending_surrender","received_by_police","in_custody","approved_for_pickup","released"].map(s=><option key={s} value={s}>{statusLabel(s)}</option>)}</select></label><div className="flex flex-wrap gap-3 items-center"><button className="button">Filter</button><Link href="/security" className="text-link">Clear</Link></div></form>
+   <form className="panel form-grid filter-grid my-5"><label>Reference or title<input name="q" defaultValue={q}/></label><label>Workspace<select name="tab" defaultValue={view}><option value="receiving">Receiving queue</option><option value="review">Publication review</option><option value="inventory">Active custody inventory</option><option value="guest">Guest reports</option></select></label><label>Status<select name="status" defaultValue={filters.status??""}><option value="">All</option>{["open","pending_surrender","received_by_police","in_custody","approved_for_pickup","released"].map(s=><option key={s} value={s}>{statusLabel(s)}</option>)}</select></label><div className="flex flex-wrap gap-3 items-center"><button className="button">Filter</button><Link href="/security" className="text-link">Clear</Link></div></form>
    {!list.length&&<p className="panel">No operational reports match this view.</p>}
    {list.map(r=><section className="panel workspace-record my-5" key={r.id}>
      <div className="flex flex-wrap items-center gap-2 mb-3"><ReportKind kind={r.kind}/><span className={`status ${r.status==="pending_surrender"?"pending":""}`}>{statusLabel(r.status)}</span><span className="location-status">{view==="inventory"?"Active custody":view==="review"?"Awaiting publication decision":"Awaiting physical receipt"}</span></div>

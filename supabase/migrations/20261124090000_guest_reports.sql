@@ -16,7 +16,9 @@ create table public.guest_reports (
   contact_method text not null check (length(trim(contact_method)) between 1 and 250),
   private_details text check (private_details is null or length(private_details) <= 3000),
   preferred_station_id uuid references public.stations(id),
-  status text not null default 'pending_review' check (status in ('pending_review','published','dismissed')),
+  status text not null default 'pending_review' check (status in ('pending_review','reviewed','dismissed')),
+  reviewed_by uuid references auth.users(id),
+  reviewed_at timestamptz,
   created_at timestamptz not null default now(),
   constraint guest_reports_occurred_not_future check (occurred_at <= now() + interval '1 day')
 );
@@ -61,3 +63,24 @@ $$;
 
 revoke all on function public.submit_guest_report(text,text,text,text,text,text,timestamptz,text,double precision,double precision,text,uuid,text) from public;
 grant execute on function public.submit_guest_report(text,text,text,text,text,text,timestamptz,text,double precision,double precision,text,uuid,text) to anon, authenticated;
+
+-- Staff review: only staff assigned to the report's station (or an admin) can decide, and only once.
+create function public.review_guest_report(p_id uuid, p_decision text)
+returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if p_decision not in ('reviewed','dismissed') then
+    raise exception 'Choose reviewed or dismissed' using errcode = '22023';
+  end if;
+  update public.guest_reports
+     set status = p_decision, reviewed_by = auth.uid(), reviewed_at = now()
+   where id = p_id and status = 'pending_review' and preferred_station_id is not null
+     and private.can_manage(preferred_station_id);
+  if not found then
+    raise exception 'Report not found, already decided, or outside your station' using errcode = '42501';
+  end if;
+end;
+$$;
+
+revoke all on function public.review_guest_report(uuid, text) from public;
+grant execute on function public.review_guest_report(uuid, text) to authenticated;
