@@ -28,6 +28,7 @@ export default async function ReportPage({ params, searchParams }: {
   const stations = ((directory ?? []) as (Parameters<typeof stationFromRow>[0] & { is_demo: boolean })[])
     .filter(row => !row.is_demo).map(stationFromRow);
   const existingStation = report?.preferred_station_id ?? null;
-  const selectedStation = stationId && stations.some(row => row.id === stationId) ? stationId : existingStation;
+  // Only found reports use a station; lost reports never carry one.
+  const selectedStation = kind !== "found" ? null : stationId && stations.some(row => row.id === stationId) ? stationId : existingStation;
   return <ReportForm kind={kind} report={report} stations={stations} initialStationId={selectedStation} guest={!user} />;
 }

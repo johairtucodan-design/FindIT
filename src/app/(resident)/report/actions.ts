@@ -28,7 +28,7 @@ export async function saveReport(kind: string, id: string | null, form: FormData
   const contactMethod = accountContact(profile?.phone, user.email);
   if (!contactMethod) return { errors: { form: "Add a contact email or phone number to your account before reporting an item." } };
   const submittedStation = form.get("preferred_station_id");
-  const preferredStation = submittedStation === null ? existing?.preferred_station_id ?? "" : String(submittedStation).trim();
+  const preferredStation = kind !== "found" ? "" : submittedStation === null ? existing?.preferred_station_id ?? "" : String(submittedStation).trim();
   if (preferredStation && !isUuid(preferredStation)) return { errors: { preferred_station_id: "Choose a valid public reference station." } };
   if (preferredStation) {
     const { data: directory, error: directoryError } = await client.rpc("station_directory");

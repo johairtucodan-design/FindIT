@@ -78,12 +78,12 @@ export default function ReportForm({ kind, report, stations, initialStationId, g
 
       <section className="report-section" aria-labelledby="place-heading">{heading("02", kind === "found" ? "Where you found it" : "Where you lost it", "Pin the spot on the map.", "place-heading")}<div className="report-fields">
         {hasStations ? <div className={errors.location ? "pin-field-error" : undefined} id="location" aria-invalid={Boolean(errors.location)}>
-          <LocationPicker kind={kind} stations={stations} point={point} onPoint={placePoint} preferredId={preferredStation} onPreferred={id => { setPreferredStation(id); setErrors(current => ({ ...current, preferred_station_id: "" })); }}/>
+          <LocationPicker kind={kind} stations={kind === "found" ? stations : []} point={point} onPoint={placePoint} preferredId={preferredStation} onPreferred={id => { setPreferredStation(id); setErrors(current => ({ ...current, preferred_station_id: "" })); }}/>
           {errors.location && <span className="field-error">{errors.location}</span>}
         </div> : <p className="notice">The station map is unavailable right now. Try again later.</p>}
         <input type="hidden" name="latitude" value={point?.latitude ?? ""}/>
         <input type="hidden" name="longitude" value={point?.longitude ?? ""}/>
-        <input type="hidden" name="preferred_station_id" value={preferredStation}/>
+        {kind === "found" && <input type="hidden" name="preferred_station_id" value={preferredStation}/>}
         <label className="report-field" htmlFor="location_text"><span className="report-label">Landmark or nearby detail <span className="optional">Optional</span></span><input id="location_text" name="location_text" maxLength={300} placeholder="e.g. Near the city hall entrance" defaultValue={report?.location_text && report.location_text !== "Pinned on map" ? report.location_text : ""}/></label>
         <label className="report-field" htmlFor="occurred_at"><span className="report-label">Date {kind === "lost" ? "lost" : "found"} <span aria-hidden="true">*</span></span><input id="occurred_at" name="occurred_at" type="date" required max={new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Singapore" })} defaultValue={report?.occurred_at.slice(0, 10) ?? ""} aria-invalid={Boolean(errors.occurred_at)} aria-describedby={errors.occurred_at ? "occurred_at-error" : undefined}/>{errors.occurred_at && <span id="occurred_at-error" className="field-error">{errors.occurred_at}</span>}</label>
         {errors.preferred_station_id && <span className="field-error">{errors.preferred_station_id}</span>}
