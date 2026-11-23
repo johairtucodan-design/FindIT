@@ -304,6 +304,11 @@ export default function Locator({ stations, locations, initialLocationId = null 
       <section id="station-map" className={`station-map-pane${mobileView === "map" ? " is-mobile-active" : ""}`} aria-label="Selected station and map" tabIndex={-1}>
         <div className="station-map-heading"><div><p className="eyebrow">INTERACTIVE STATION MAP</p><h2>{selectedLocation?.name ?? activeStation?.name.value ?? "Station map"}</h2><p>{selectedLocation ? selectedLocation.station_name : activeStation?.address.value ?? (activeStation ? missingLabel(activeStation.address, "Address") : "Search the list to find public station information.")}</p></div><span className={`map-pin-status${selectedLocation || activeStation?.coordinates.value ? " is-pinned" : ""}`}><i/>{selectedLocation ? publicPinSourceLabel : activeStation?.coordinates.value ? "Sourced map pin" : activeStation ? missingLabel(activeStation.coordinates, "Map pin") : "No selected location"}</span></div>
         <div className={`station-map-frame${choosingOrigin ? " is-picking" : ""}`}><StationMap stations={results} locations={locations} selectedKey={activeKey} selectedCoordinates={position} selectedCoordinatesLabel="Your starting point" routeCoordinates={displayedRoute?.coordinates ?? null} pickMode={choosingOrigin} active={mobileView === "map"} onSelect={select} onPickCoordinate={useOrigin}/></div>
+        <ul className="map-legend" aria-label="Map key">
+          <li><span className="legend-dot legend-station"/>Police station reference</li>
+          <li><span className="legend-dot legend-public"/>Public map reference</li>
+          <li><span className="legend-dot legend-start"/>Your starting point</li>
+        </ul>
         {selectedLocation && <div className="station-selected-details">
           <div className="station-details-title"><div><p className="eyebrow">{publicPinSourceLabel.toUpperCase()}</p><h3>{selectedLocation.name}</h3></div><span>Not independently verified</span></div>
           <dl className="station-details-grid"><div className="station-detail-row"><dt>Station reference</dt><dd>{selectedLocation.station_name}</dd></div><div className="station-detail-row"><dt>Public description</dt><dd>{selectedLocation.description}</dd></div><div className="station-detail-row"><dt>Visit instructions</dt><dd>{selectedLocation.visit_instructions}</dd></div></dl>

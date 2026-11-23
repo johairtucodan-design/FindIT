@@ -795,3 +795,62 @@ input[aria-invalid=true], textarea[aria-invalid=true] { border-color: #b91c1c; }
   .station-list-pane { padding:.85rem; }
   .station-option { padding:.85rem; }
 }
+
+/* Public station map: calmer tiles, a visible key, and on phones the map sits above the list (no toggle). */
+.station-map-canvas { background:#e9efe9; }
+.station-map-frame .leaflet-tile-pane { filter:saturate(.55) contrast(.95) brightness(1.04); }
+.map-legend { display:flex; flex-wrap:wrap; gap:.4rem 1rem; margin:.7rem 0 0; padding:0; list-style:none; color:var(--muted); font-size:.74rem; font-weight:650; }
+.map-legend li { display:flex; align-items:center; gap:.4rem; }
+.legend-dot { width:.7rem; height:.7rem; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px #17352b33; }
+.legend-station { background:var(--primary); }
+.legend-public { background:#23876e; }
+.legend-start { background:#dc6b36; }
+@media (max-width:899px) {
+  .station-view-toggle { display:none; }
+  .station-explorer { display:grid; grid-template-columns:1fr; gap:1rem; }
+  .station-map-pane { order:-1; }
+  .station-list-pane,.station-map-pane { display:block !important; max-height:none; overflow:visible; position:static; }
+  .station-map-frame { height:min(56svh,28rem); min-height:18rem; }
+  .map-legend { font-size:.7rem; }
+}
+
+/* Add map pin: a guided editor beside the existing pins on desktop, stacked on phones. */
+.pin-studio { display:grid; gap:1.25rem; }
+.pin-steps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.75rem; margin:0; padding:0; list-style:none; }
+.pin-steps li { display:flex; align-items:flex-start; gap:.7rem; padding:.9rem 1rem; border:1px solid var(--line); border-radius:1rem; background:#fff; }
+.pin-steps li > span { display:grid; place-items:center; flex:none; width:1.9rem; aspect-ratio:1; border-radius:50%; background:var(--primary); color:#fff; font-size:.8rem; font-weight:800; }
+.pin-steps strong { display:block; font-size:.9rem; }
+.pin-steps small { display:block; margin-top:.15rem; color:var(--muted); font-size:.76rem; line-height:1.4; }
+.pin-studio-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(19rem,24rem); gap:1.25rem; align-items:start; }
+.pin-editor { display:grid; gap:1rem; padding:1.35rem; }
+.pin-editor-head,.pin-list-head { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; }
+.pin-editor-head h2,.pin-list-head h2 { margin-top:.2rem; font-size:1.3rem; font-weight:850; letter-spacing:-.03em; }
+.pin-editor .pin-field { display:grid; gap:.35rem; font-size:.8rem; font-weight:750; color:#30473f; }
+.pin-editor .pin-field input,.pin-editor .pin-field textarea,.pin-editor .pin-field select { width:100%; }
+.pin-map { height:min(60svh,36rem); min-height:22rem; margin:0; }
+.pin-map-hint { margin-top:-.4rem; color:var(--muted); font-size:.8rem; }
+.pin-coords { border:1px dashed var(--line); border-radius:.8rem; padding:.7rem .9rem; }
+.pin-coords summary { cursor:pointer; color:var(--primary); font-size:.82rem; font-weight:750; }
+.pin-coords .location-coordinate-grid { margin-top:.7rem; }
+.pin-disclaimer { color:var(--muted); font-size:.74rem; line-height:1.5; }
+.pin-list { display:grid; gap:1rem; padding:1.25rem; position:sticky; top:1.5rem; max-height:calc(100svh - 3rem); overflow:auto; }
+.pin-empty { padding:1rem; border:1px dashed var(--line); border-radius:.8rem; font-size:.88rem; }
+.pin-cards { display:grid; gap:.7rem; margin:0; padding:0; list-style:none; }
+.pin-card { display:grid; gap:.45rem; padding:.9rem; border:1px solid var(--line); border-radius:.9rem; background:#fff; }
+.pin-card.is-editing { border-color:var(--primary); background:var(--soft); }
+.pin-card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:.6rem; }
+.pin-card-top h3 { font-size:.95rem; font-weight:800; overflow-wrap:anywhere; }
+.pin-card-coords { color:var(--muted); font-size:.74rem; font-variant-numeric:tabular-nums; }
+.pin-card-desc { color:var(--muted); font-size:.8rem; line-height:1.5; }
+.pin-card-actions { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
+.pin-card-actions .button { min-height:2.4rem; padding:.45rem .9rem; font-size:.8rem; }
+.pin-remove { font-size:.8rem; }
+.pin-remove summary { cursor:pointer; color:#8a2626; font-weight:750; }
+.pin-remove[open] .workflow-result,.pin-remove form { margin-top:.5rem; }
+@media (max-width:899px) {
+  .pin-steps { grid-template-columns:1fr; }
+  .pin-studio-grid { grid-template-columns:1fr; }
+  .pin-list { position:static; max-height:none; overflow:visible; }
+  .pin-editor { padding:1rem; }
+  .pin-map { min-height:16rem; height:min(50svh,24rem); }
+}
