@@ -55,3 +55,29 @@ export async function saveReport(kind: string, id: string | null, form: FormData
   revalidatePath(`/items/${data.id}`);
   redirect(`/items/${data.id}`);
 }
+
+// Guest submission: no account needed. Reports go to staff review and are never published directly.
+export async function submitGuestReport(kind: string, form: FormData): Promise<{ errors: Record<string, string> }> {
+  if (kind !== "lost" && kind !== "found") return { errors: { form: "Invalid report type." } };
+  if (String(form.get("website") ?? "")) return { errors: { form: "This report could not be submitted." } };
+  const { values, occurred_at, errors } = validateReport(form);
+  const station = String(form.get("preferred_station_id") ?? "");
+  if (station && !isUuid(station)) errors.preferred_station_id = "Choose a valid station.";
+  if (Object.keys(errors).length) return { errors };
+  const client = await createClient();
+  const { data, error } = await client.rpc("submit_guest_report", {
+    p_kind: kind,
+    p_title: values.title,
+    p_category: values.category,
+    p_color: values.color,
+    p_description: values.description,
+    p_location_text: values.location_text,
+    p_occurred_at: occurred_at,
+    p_contact_method: values.contact_method,
+    p_private_details: values.private_details || null,
+    p_station: station || null,
+    p_website: null,
+  });
+  if (error || !data) return { errors: { form: "The report could not be submitted. Please try again; your entries are kept." } };
+  redirect(`/report/received?ref=${encodeURIComponent(String(data))}`);
+}

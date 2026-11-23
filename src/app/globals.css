@@ -854,3 +854,5 @@ input[aria-invalid=true], textarea[aria-invalid=true] { border-color: #b91c1c; }
   .pin-editor { padding:1rem; }
   .pin-map { min-height:16rem; height:min(50svh,24rem); }
 }
+
+.honeypot { position:absolute; left:-10000px; width:1px; height:1px; overflow:hidden; }
