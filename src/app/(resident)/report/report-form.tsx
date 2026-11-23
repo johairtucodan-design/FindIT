@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { colorHex, colorPresets } from "@/lib/colors";
+
+// Quick swatches keep the picker to one compact row; other colors are reached through "+".
+const quickColors = ["Black", "White", "Gray", "Silver", "Brown", "Red", "Blue", "Green"];
 import { itemCategories, type Report } from "@/lib/reports";
 import { saveReport } from "./actions";
 
@@ -56,8 +59,12 @@ export default function ReportForm({ kind, report, stations, initialStationId }:
         <label className="report-field" htmlFor="category"><span className="report-label">Category <span aria-hidden="true">*</span></span><select id="category" name="category" required defaultValue={report?.category ?? ""} aria-invalid={Boolean(errors.category)} aria-describedby={errors.category ? "category-error" : undefined}><option value="" disabled>Choose a category</option>{categories.map(category => <option key={category} value={category}>{category}</option>)}</select>{errors.category && <span id="category-error" className="field-error">{errors.category}</span>}</label>
         <fieldset className="report-field color-field" id="color" aria-describedby={errors.color ? "color-error" : "color-help"} aria-required="true">
           <legend className="report-label">Color <span aria-hidden="true">*</span></legend><span className="report-hint">Choose a preset or open the standard color picker for any shade.</span>
-          <div className="color-picker-row"><label className="color-picker-control" htmlFor="color-picker"><span>Custom color</span><input id="color-picker" type="color" value={pickerColor} aria-label="Choose a custom item color" aria-invalid={Boolean(errors.color)} onChange={event => chooseColor(event.target.value.toUpperCase())}/></label><output className="color-value" htmlFor="color-picker"><span>Selected</span><strong>{colorLabel}</strong></output></div>
-          <div className="color-options" aria-label="Common colors">{colorPresets.map(preset => <button className="color-preset" key={preset.hex} type="button" aria-label={`Set color to ${preset.name}`} aria-pressed={color === preset.hex} onClick={() => chooseColor(preset.hex)}><span className="color-swatch" style={{ background: preset.hex }} aria-hidden="true"/><span>{preset.name}</span></button>)}<button className="color-preset color-unknown" type="button" aria-pressed={color === "Unknown"} onClick={() => chooseColor("Unknown")}><span className="color-swatch" aria-hidden="true"/><span>Not sure</span></button></div>
+          <div className="color-current"><span className="color-current-swatch" style={resolvedColor ? { background: resolvedColor } : undefined} aria-hidden="true"/><strong>{colorLabel}</strong></div>
+          <div className="color-dots" role="group" aria-label="Common colors">
+            {colorPresets.filter(preset => quickColors.includes(preset.name)).map(preset => <button className="color-dot" key={preset.hex} type="button" title={preset.name} aria-label={`Set color to ${preset.name}`} aria-pressed={color === preset.hex} onClick={() => chooseColor(preset.hex)}><span style={{ background: preset.hex }} aria-hidden="true"/></button>)}
+            <button className="color-dot color-dot-unknown" type="button" title="Not sure" aria-label="Not sure" aria-pressed={color === "Unknown"} onClick={() => chooseColor("Unknown")}><span aria-hidden="true">?</span></button>
+            <label className="color-dot color-dot-more" title="Other color"><span aria-hidden="true">+</span><span className="sr-only">Choose another color</span><input type="color" value={pickerColor} aria-label="Choose another color" aria-invalid={Boolean(errors.color)} onChange={event => chooseColor(event.target.value.toUpperCase())}/></label>
+          </div>
           <input type="hidden" name="color" value={color}/><span id="color-help" className="report-hint">Existing named colors stay as saved unless you pick a new one.</span>{errors.color && <span id="color-error" className="field-error">{errors.color}</span>}
         </fieldset>
         <label className="report-field" htmlFor="description"><span className="report-label">Description <span aria-hidden="true">*</span></span><span className="report-hint">Include visible details that are safe to share.</span><textarea id="description" name="description" required maxLength={3000} rows={4} placeholder="Shape, material, brand, or other visible details…" defaultValue={report?.description ?? ""} aria-invalid={Boolean(errors.description)} aria-describedby={errors.description ? "description-error" : undefined}/>{errors.description && <span id="description-error" className="field-error">{errors.description}</span>}</label>
