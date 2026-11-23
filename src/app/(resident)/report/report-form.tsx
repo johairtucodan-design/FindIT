@@ -58,7 +58,6 @@ export default function ReportForm({ kind, report, stations, initialStationId, g
     <form onSubmit={submit} noValidate className="report-form">
       {guest && <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="honeypot"/>}
       {guest && <aside className="notice"><strong>Reporting as a guest.</strong><p className="mt-1">Station staff review guest reports before anything appears publicly. <Link className="text-link" href="/auth">Sign in</Link> to track reports and add a photo.</p></aside>}
-      {kind === "found" && <aside className="notice"><strong>Reporting a found item does not mean police hold it.</strong><p className="mt-1">Take the item to a station yourself. FindIT cannot confirm custody or arrange handovers.</p></aside>}
       {Object.keys(errors).length > 0 && <div className="error" role="alert"><strong>Please check your report.</strong>{errors.form && <p>{errors.form}</p>}<ul className="mt-2 list-inside list-disc">{Object.entries(errors).filter(([key, error]) => key !== "form" && error).map(([key, error]) => <li key={key}><a className="underline" href={`#${key}`}>{error}</a></li>)}</ul></div>}
 
       <section className="report-section" aria-labelledby="item-heading">{heading("01", "Item", "What would someone notice first?", "item-heading")}<div className="report-fields">

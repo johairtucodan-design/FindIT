@@ -46,8 +46,7 @@ export default async function ItemPage({ params }: { params: Promise<{ id: strin
       {isOwner && editable(full!.status) && full!.publication_status !== "withdrawn" && <Link className="button secondary" href={`/report/${report.kind}?edit=${id}`}>Edit report</Link>}
     </header>
 
-    {report.is_demo && <aside className="demo-disclaimer">Synthetic example for exploring FindIT. This is not an actual community report.</aside>}
-    {report.kind === "found" && report.status === "pending_surrender" && <aside className="detail-custody-note"><span aria-hidden="true">!</span><p><strong>Reported — Not Received</strong><br/>This found report does not mean police hold the item.</p></aside>}
+    {report.kind === "found" && report.status === "pending_surrender" && <aside className="detail-custody-note"><span aria-hidden="true">!</span><p><strong>Reported — Not Received</strong></p></aside>}
     {full && <p className="detail-publication-note">Publication: {full.publication_status}. New reports and edits need staff approval.</p>}
 
     <div className="item-detail-grid">
@@ -72,7 +71,6 @@ export default async function ItemPage({ params }: { params: Promise<{ id: strin
       {!eligibleLost ? <p className="muted mt-4">Suggestions are available while this report is open.</p> : <><p className="muted mt-3">We compare {report.is_demo ? "other synthetic demo examples" : "public found reports"} by category (25%), details (30%), color (15%), date (15%), and approximate area (15%). Missing signals are reweighted. {full?.publication_status !== "approved" && isOwner ? "These suggestions are private to you and authorized station staff while your report awaits approval." : ""}</p>
         {matches?.error ? <p className="muted mt-3">Suggestions couldn’t be loaded. <Link className="text-link" href="/items?kind=found">Browse found items</Link>.</p> : suggested.length ? <ol className="match-list mt-5">{suggested.map(({ candidate: item, score, reasons, breakdown, notEnoughDetails }) => <li key={item.id} className="match-card">
           <div className="match-card-top"><div><p className="match-overline">FOUND REPORT</p><Link className="match-title" href={`/items/${item.id}`}>{item.title}</Link><p className="muted mt-2 text-sm">{item.occurred_at?.slice(0, 10)} · {statusLabel(item.status)}</p></div><MatchScore score={notEnoughDetails ? null : score}/></div>
-          {item.status === "pending_surrender" && <p className="notice mt-4 text-sm">Reported — Not Received. Reporting does not mean police hold this item.</p>}
           <div className="match-reasons">{reasons.map(reason => <span key={reason}>{reason}</span>)}</div>
           <MatchBreakdown signals={breakdown} category={item.category || "Not listed"} color={item.color || "Not listed"} date={item.occurred_at?.slice(0, 10) || "Not listed"} description={item.description || "No public description provided."}/>
         </li>)}</ol> : <p className="match-empty mt-4">No public found reports are ready to compare yet. Check again as listings are approved.</p>}</>}

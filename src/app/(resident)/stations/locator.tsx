@@ -295,7 +295,7 @@ export default function Locator({ stations, locations, initialLocationId = null 
             </button>
           </li>;
         })}</ul> : <p className="station-empty">No station listings match. Try a shorter search or another filter.</p>}
-        {orderedLocations.length > 0 && <ul className="station-pin-list"><li><h3>Public map references</h3><p className="muted text-xs">These location references are not verified police-published pins or confirmed handover points.</p></li>{orderedLocations.map(pin => {
+        {orderedLocations.length > 0 && <ul className="station-pin-list"><li><h3>Public map references</h3></li>{orderedLocations.map(pin => {
           const key = stationSelectionKey("location", pin.id), active = activeKey === key;
           return <li key={pin.id}><button type="button" className={`station-pin-option${active ? " is-selected" : ""}`} aria-pressed={active} onClick={() => select(key)}><strong>{pin.name}</strong><span>{pin.station_name} · {publicPinSourceLabel}</span><small>{pin.description}</small></button></li>;
         })}</ul>}
@@ -312,7 +312,6 @@ export default function Locator({ stations, locations, initialLocationId = null 
         {selectedLocation && <div className="station-selected-details">
           <div className="station-details-title"><div><p className="eyebrow">{publicPinSourceLabel.toUpperCase()}</p><h3>{selectedLocation.name}</h3></div><span>Not independently verified</span></div>
           <dl className="station-details-grid"><div className="station-detail-row"><dt>Station reference</dt><dd>{selectedLocation.station_name}</dd></div><div className="station-detail-row"><dt>Public description</dt><dd>{selectedLocation.description}</dd></div><div className="station-detail-row"><dt>Visit instructions</dt><dd>{selectedLocation.visit_instructions}</dd></div></dl>
-          <p className="station-pin-disclaimer">This is a public map reference, not confirmation of police publication, station permission, police partnership, item acceptance, or custody. Confirm details with the station before visiting.</p>
         </div>}
         {activeStation && <div className="station-selected-details">
           <div className="station-details-title"><div><p className="eyebrow">SOURCE DETAILS</p><h3>{activeStation.name.value}</h3></div><span>{activeStation.address.status === "conflict" ? "Sources conflict" : "Public-source listing"}</span></div>
@@ -326,7 +325,6 @@ export default function Locator({ stations, locations, initialLocationId = null 
           {activeStation.kind === "station" && <div className="station-actions">
             <button className="button secondary" type="button" disabled={!position || !shareConsent || !activeStation.coordinates.value || activeStation.coordinates.status !== "sourced" || routing} onClick={() => void showRoute(activeStation, travelMode)}>{routing ? "Loading route…" : displayedRoute ? `Refresh ${travelModeLabel(travelMode)} route` : `Show ${travelModeLabel(travelMode)} route`}</button>
             <Link className="button" href={`/report/lost?station=${encodeURIComponent(activeStation.id)}`}>Report lost item</Link>
-            <p className="station-reference-note">The station choice is saved as your preferred public reference only. It does not send your report to the station or confirm an agreement to receive items.</p>
             {!position && <p className="report-hint">Choose a starting point to compare walking and driving routes.</p>}
           </div>}
           {displayedRoute && <section className="station-route-summary" aria-label={`${travelModeLabel(travelMode)} directions`}>
@@ -335,7 +333,7 @@ export default function Locator({ stations, locations, initialLocationId = null 
             {displayedRoute.steps.length ? <ol className="station-directions">{displayedRoute.steps.map((step, index) => <li key={`${index}-${step.instruction}`}><span className="station-direction-number">{String(index + 1).padStart(2, "0")}</span><div><strong>{step.instruction}</strong><small>{formatRouteDistance(step.distance_meters)} · about {formatStepTime(step.duration_seconds)}</small></div></li>)}</ol> : <p className="report-hint">Step details were not returned for this route.</p>}
           </section>}
         </div>}
-        <p className="station-directory-note">Public references only; FindIT has no confirmed police partners or authorized handover points. Confirm details with the station before visiting. Never use a precise lost-item location as a route origin. Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a> · walking and driving routes by <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noreferrer">FOSSGIS</a> · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noreferrer">Fix the map</a>.</p>
+        <p className="station-directory-note">Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a> · routes by <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noreferrer">FOSSGIS</a></p>
       </section>
     </div>
     {/* TODO: add a staffed process for station-directory corrections. */}

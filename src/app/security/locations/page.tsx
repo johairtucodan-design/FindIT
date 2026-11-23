@@ -19,7 +19,6 @@ export default async function StationLocations() {
   return <>
     <div className="workspace-heading"><p className="eyebrow">{profile.role === "admin" ? "Admin map tools" : "Assigned station"}</p><h1 className="page-title">Station map pins</h1><p className="muted">Add or manage public-reference map pins. This does not create a new station-directory listing.</p></div>
     {!stations.length && <p className="notice my-5">{profile.role === "admin" ? "There are no approved, non-demo public references available for map pins." : "Map-pin publishing needs an approved, non-demo station assignment. Ask a FindIT administrator to assign your account to an eligible station."}</p>}
-    <aside className="notice my-5"><strong>Pins publish without admin review.</strong> They are staff-provided public references, not station authorization or confirmed handover points. Don’t claim a station accepts items unless that has been officially confirmed.</aside>
     {stations.length ? <LocationManager stations={stations} initialStationId={initialStationId} locations={locations} allowStationSelection={profile.role === "admin"}/> : <section className="panel muted">Public map editing is unavailable until an eligible station reference is available.</section>}
   </>;
 }

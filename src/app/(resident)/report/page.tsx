@@ -16,7 +16,7 @@ export default function ReportChooser() {
       <Link className="panel quick-card" href="/report/found">
         <span className="quick-icon"><Icon name="box"/></span>
         <h2 className="text-xl font-bold">I found an item</h2>
-        <p>Describe the item and keep identifying details private. Reporting does not mean police hold it.</p>
+        <p>Describe the item and keep identifying details private.</p>
         <span className="quick-action">Start a found report <Icon name="arrow" size={18}/></span>
       </Link>
     </div>

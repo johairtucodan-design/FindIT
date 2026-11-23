@@ -133,7 +133,7 @@ export default async function Manager({searchParams}:{searchParams:Promise<Recor
   } else if(view==="pins") {
     body=<section className="panel workspace-section" aria-labelledby="pins-title">
       <p className="eyebrow">Public map</p><h2 id="pins-title" className="text-xl font-bold">Map pin activity</h2>
-      <p className="muted mt-2">Assigned station staff publish their public-reference pins directly. Admin approval is not required; these entries do not confirm police authorization or item acceptance.</p>
+      <p className="muted mt-2">Assigned station staff publish their public-reference pins directly.</p>
       <Link className="button secondary my-4" href="/security/locations">Add or manage map pins</Link>
       {events.length?<ol className="timeline location-audit">{events.map(event=>{
         const stationName=stationRows.find(row=>row.id===event.station_id)?.name??"Unavailable station";
@@ -154,7 +154,7 @@ export default async function Manager({searchParams}:{searchParams:Promise<Recor
   }
 
   return <>
-    <div className="workspace-heading"><p className="eyebrow">Oversight</p><h1 className="page-title">Operations overview</h1><p className="muted">Manage FindIT account permissions and inspect map and record activity. This admin console does not establish a police partnership.</p></div>
+    <div className="workspace-heading"><p className="eyebrow">Oversight</p><h1 className="page-title">Operations overview</h1><p className="muted">Manage FindIT account permissions and inspect map and record activity.</p></div>
     <nav className="admin-tabs" aria-label="Admin sections">{views.map(([key,label])=><Link key={key} href={`/manager?view=${key}`} aria-current={key===view?"page":undefined}>{label}</Link>)}</nav>
     <div className="admin-view">{body}</div>
   </>;

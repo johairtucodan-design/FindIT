@@ -53,7 +53,7 @@ export default function LocationManager({ stations, initialStationId, locations,
           if (!feedback) return result.error ? <p className="error" role="alert">{result.error}</p> : result.success ? <p className="notice" role="status">{result.success}</p> : null;
           if (feedback.kind === "error") return <p className="error" role="alert">{feedback.message}</p>;
           return <div className="pin-save-confirmation" role="status" aria-live="polite">
-            <div><p className="eyebrow">MAP UPDATED</p><h3>{feedback.pin.name}</h3><p>{feedback.pin.stationName}</p><small>Now visible as an unverified public map reference. It does not mean the police published or approved this location.</small></div>
+            <div><p className="eyebrow">MAP UPDATED</p><h3>{feedback.pin.name}</h3><p>{feedback.pin.stationName}</p><small>Now live on the public map.</small></div>
             <div className="pin-save-actions"><Link className="button secondary" href={pinPreviewHref(feedback.pin)}>Preview on public map</Link><button className="button" type="button" onClick={startNew}>Add another pin</button></div>
           </div>;
         }}>
@@ -78,7 +78,6 @@ export default function LocationManager({ stations, initialStationId, locations,
             </div>
           </details>
         </WorkflowForm>
-        <p className="pin-disclaimer">Pins are unverified public references. They are not police-published locations, station permission, an authorized drop-off point, or proof that an item is held there.</p>
       </section>
 
       <aside className="panel pin-list" aria-label="Existing map pins">

@@ -64,7 +64,7 @@ export default async function Home({searchParams}: {searchParams: Promise<{code?
 
     <section className="home-about" aria-labelledby="about-title">
       <div className="about-mark" aria-hidden="true">F<span>I</span></div>
-      <div><p className="eyebrow">BUILT FOR CLARITY</p><h2 id="about-title">A community tool with honest status updates.</h2><p>FindIT is a coursework prototype. Station information is for reference only; this project does not claim an official police partnership.</p><Link className="text-link" href="/about">About FindIT <Icon name="arrow" size={16}/></Link></div>
+      <div><p className="eyebrow">BUILT FOR CLARITY</p><h2 id="about-title">A community tool with honest status updates.</h2><Link className="text-link" href="/about">About FindIT <Icon name="arrow" size={16}/></Link></div>
     </section>
   </>;
 }
