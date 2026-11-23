@@ -779,3 +779,19 @@ input[aria-invalid=true], textarea[aria-invalid=true] { border-color: #b91c1c; }
   .browse-results .report-card-content { align-content:start; }
   .my-report-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(19rem,1fr)); gap:1rem; }
 }
+
+/* Station directory. Desktop: a sticky list beside a larger map, with details in a two-column grid. Mobile keeps the list/map toggle. */
+@media (min-width:900px) {
+  .station-explorer { grid-template-columns:minmax(19rem,24rem) minmax(0,1fr); gap:1.25rem; align-items:start; }
+  .station-list-pane { position:sticky; top:1.5rem; max-height:calc(100svh - 3rem); padding:1.05rem; }
+  .station-map-pane { position:static; padding:1.15rem; }
+  .station-map-frame { height:min(62svh,48rem); min-height:26rem; }
+  .station-details-grid { grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:1.6rem; }
+  .station-option { padding:.8rem .9rem; }
+  .station-search-row { grid-template-columns:minmax(0,1fr) minmax(12rem,16rem) auto; }
+}
+@media (max-width:899px) {
+  .station-map-frame { min-height:20rem; height:min(58svh,30rem); }
+  .station-list-pane { padding:.85rem; }
+  .station-option { padding:.85rem; }
+}
