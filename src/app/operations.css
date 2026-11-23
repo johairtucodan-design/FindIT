@@ -85,3 +85,54 @@
   .custody-flow { align-items:stretch; flex-direction:column; }
   .custody-flow-arrow { display:none; }
 }
+
+/* Admin console: section tabs, a searchable user table with paging, and one edit panel at a time. */
+.admin-tabs { display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:1.25rem; padding:.3rem; border:1px solid var(--line); border-radius:1rem; background:#e8f1eb; width:fit-content; max-width:100%; }
+.admin-tabs a { padding:.5rem .9rem; border-radius:.7rem; color:var(--muted); font-size:.86rem; font-weight:700; white-space:nowrap; }
+.admin-tabs a:hover { color:var(--primary); text-decoration:none; }
+.admin-tabs a[aria-current=page] { color:white; background:var(--primary); box-shadow:0 4px 10px #176c6228; }
+.admin-view { min-width:0; }
+.admin-view > .workspace-section { margin-block:0; }
+.admin-section-head { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; }
+.admin-edit-panel { margin-top:1.1rem; padding:1.1rem; border:1px solid color-mix(in srgb,var(--primary) 35%,var(--line)); border-radius:1rem; background:var(--soft); }
+.admin-edit-head { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:.9rem; }
+.admin-edit-head h3 { font-weight:800; font-size:1.1rem; }
+.admin-toolbar { display:flex; flex-wrap:wrap; align-items:flex-end; gap:.75rem; margin-top:1.2rem; padding:.9rem; border:1px solid var(--line); border-radius:1rem; background:#fbfdfb; }
+.admin-toolbar label { display:grid; gap:.35rem; font-size:.78rem; font-weight:750; color:#30473f; }
+.admin-toolbar input,.admin-toolbar select { min-height:2.7rem; min-width:10rem; }
+.admin-toolbar .admin-search { flex:1 1 16rem; }
+.admin-toolbar .admin-search input { width:100%; min-width:0; }
+.admin-count { margin-top:.9rem; font-size:.84rem; }
+.admin-table-wrap { margin-top:.6rem; overflow-x:auto; border:1px solid var(--line); border-radius:1rem; background:white; }
+.admin-table { width:100%; border-collapse:collapse; font-size:.9rem; }
+.admin-table th { padding:.7rem .9rem; text-align:left; color:var(--muted); font-size:.72rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; background:#f4f9f5; border-bottom:1px solid var(--line); }
+.admin-table td { padding:.75rem .9rem; border-bottom:1px solid #e6efe8; vertical-align:middle; }
+.admin-table tbody tr:last-child td { border-bottom:0; }
+.admin-table tbody tr:hover { background:#f8fbf8; }
+.admin-table tr.is-editing { background:var(--soft); }
+.admin-table .admin-user-identity { display:flex; align-items:center; gap:.7rem; min-width:0; }
+.admin-table .admin-user-identity p { color:var(--muted); font-size:.8rem; overflow-wrap:anywhere; }
+.admin-table .admin-user-avatar { width:2.2rem; }
+.admin-row-action { min-height:2.25rem; padding:.4rem .9rem; font-size:.8rem; }
+.role-pill { display:inline-flex; align-items:center; padding:.22rem .6rem; border-radius:2rem; font-size:.74rem; font-weight:750; background:#eef2ef; color:var(--muted); white-space:nowrap; }
+.role-pill.role-officer { background:#e2eefc; color:#1d4f8a; }
+.role-pill.role-admin { background:#fbeed8; color:#7a4b06; }
+.role-pill.role-citizen { background:#e6f3ee; color:var(--primary); }
+.admin-pager { display:flex; align-items:center; justify-content:center; gap:1rem; margin-top:1rem; }
+.admin-pager .is-disabled { opacity:.45; pointer-events:none; }
+@media (max-width:720px) {
+  .admin-tabs { width:100%; }
+  .admin-tabs a { flex:1 1 auto; text-align:center; padding:.45rem .5rem; }
+  .admin-table-wrap { overflow:visible; border:0; background:transparent; }
+  .admin-table thead { display:none; }
+  .admin-table,.admin-table tbody { display:grid; gap:.7rem; }
+  .admin-table tr { display:grid; grid-template-columns:1fr auto; gap:.45rem .8rem; padding:.9rem; border:1px solid var(--line); border-radius:1rem; background:white; }
+  .admin-table td { display:block; padding:0; border:0; }
+  .admin-table td[data-label="User"] { grid-column:1/-1; }
+  .admin-table td[data-label="Station"],.admin-table td[data-label="Joined"] { color:var(--muted); font-size:.82rem; }
+  .admin-table td[data-label="Joined"] { display:none; }
+  .admin-table td[data-label="Actions"] { grid-column:1/-1; }
+  .admin-row-action { width:100%; }
+  .admin-toolbar input,.admin-toolbar select { min-width:0; width:100%; }
+  .admin-toolbar label { flex:1 1 100%; }
+}
