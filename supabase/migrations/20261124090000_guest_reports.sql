@@ -4,12 +4,14 @@
 
 create table public.guest_reports (
   id uuid primary key default gen_random_uuid(),
-  kind text not null check (kind in ('lost','found')),
+  kind text not null check (kind = 'found'),  -- guest reports are found reports only
   title text not null check (length(trim(title)) between 1 and 120),
   category text not null check (length(trim(category)) between 1 and 80),
   color text not null check (length(trim(color)) between 1 and 80),
   description text not null check (length(trim(description)) between 1 and 3000),
   location_text text not null check (length(trim(location_text)) between 1 and 300),
+  latitude double precision not null check (latitude between -90 and 90),
+  longitude double precision not null check (longitude between -180 and 180),
   occurred_at timestamptz not null,
   contact_method text not null check (length(trim(contact_method)) between 1 and 250),
   private_details text check (private_details is null or length(private_details) <= 3000),
@@ -29,6 +31,7 @@ create policy guest_reports_staff_read on public.guest_reports for select to aut
 create function public.submit_guest_report(
   p_kind text, p_title text, p_category text, p_color text, p_description text,
   p_location_text text, p_occurred_at timestamptz, p_contact_method text,
+  p_latitude double precision, p_longitude double precision,
   p_private_details text, p_station uuid, p_website text
 ) returns uuid
 language plpgsql security definer set search_path = '' as $$
@@ -46,14 +49,15 @@ begin
   end if;
   insert into public.guest_reports (
     kind, title, category, color, description, location_text, occurred_at,
-    contact_method, private_details, preferred_station_id
+    contact_method, private_details, preferred_station_id, latitude, longitude
   ) values (
     p_kind, trim(p_title), trim(p_category), trim(p_color), trim(p_description), trim(p_location_text),
-    p_occurred_at, trim(p_contact_method), nullif(trim(coalesce(p_private_details, '')), ''), p_station
+    p_occurred_at, trim(p_contact_method), nullif(trim(coalesce(p_private_details, '')), ''), p_station,
+    p_latitude, p_longitude
   ) returning id into new_id;
   return new_id;
 end;
 $$;
 
-revoke all on function public.submit_guest_report(text,text,text,text,text,text,timestamptz,text,text,uuid,text) from public;
-grant execute on function public.submit_guest_report(text,text,text,text,text,text,timestamptz,text,text,uuid,text) to anon, authenticated;
+revoke all on function public.submit_guest_report(text,text,text,text,text,text,timestamptz,text,double precision,double precision,text,uuid,text) from public;
+grant execute on function public.submit_guest_report(text,text,text,text,text,text,timestamptz,text,double precision,double precision,text,uuid,text) to anon, authenticated;

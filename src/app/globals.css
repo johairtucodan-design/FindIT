@@ -856,3 +856,35 @@ input[aria-invalid=true], textarea[aria-invalid=true] { border-color: #b91c1c; }
 }
 
 .honeypot { position:absolute; left:-10000px; width:1px; height:1px; overflow:hidden; }
+
+/* Report color picker: one compact row of swatches with the current choice shown above it. */
+.color-current { display:flex; align-items:center; gap:.5rem; margin-top:.35rem; color:var(--ink); font-size:.82rem; }
+.color-current strong { font-weight:750; font-variant-numeric:tabular-nums; }
+.color-current-swatch { width:1.1rem; aspect-ratio:1; border-radius:50%; border:1px solid #7775; background:repeating-linear-gradient(135deg,#fff 0 4px,#b7bdc8 4px 8px); }
+.color-dots { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.2rem; }
+.color-dot { position:relative; display:grid; place-items:center; width:2.4rem; height:2.4rem; padding:0; border:2px solid #fff; border-radius:50%; box-shadow:0 0 0 1px #17352b33; background:#fff; color:var(--muted); font-size:.85rem; font-weight:800; cursor:pointer; transition:transform .14s,box-shadow .14s; }
+.color-dot > span:first-child { display:block; width:100%; height:100%; border-radius:50%; }
+.color-dot:hover { transform:translateY(-1px); }
+.color-dot[aria-pressed=true] { box-shadow:0 0 0 2px #fff,0 0 0 4px var(--primary); }
+.color-dot-unknown { background:repeating-linear-gradient(135deg,#fff 0 4px,#b7bdc8 4px 8px); }
+.color-dot-more { cursor:pointer; background:var(--soft); color:var(--primary); }
+.color-dot-more input { position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+.color-dot-more:focus-within { outline:3px solid var(--primary); outline-offset:3px; }
+
+/* Report location: map-first pin picker with the closest station beneath it. */
+.pin-picker { display:grid; gap:.8rem; min-width:0; }
+.pin-picker-map { position:relative; height:min(56svh,30rem); min-height:17rem; overflow:hidden; border:1px solid #cbded3; border-radius:1rem; background:#e9efe9; }
+.pin-picker-map .station-map-canvas { position:absolute; inset:0; width:100%; height:100%; }
+.pin-picker-map .leaflet-tile-pane { filter:saturate(.55) contrast(.95) brightness(1.04); }
+.pin-picker-hint,.pin-picker-note { color:var(--muted); font-size:.8rem; line-height:1.45; }
+.nearest-station { display:grid; gap:.25rem; padding:1rem; border:1px solid #b9dfca; border-radius:1rem; background:linear-gradient(135deg,#f1faf5,#fff 80%); }
+.nearest-station .eyebrow { margin:0; font-size:.66rem; }
+.nearest-station strong { font-size:1rem; font-weight:800; }
+.nearest-station p { font-size:.82rem; line-height:1.45; }
+.nearest-station-actions { display:flex; flex-wrap:wrap; align-items:center; gap:.6rem 1rem; margin-top:.5rem; }
+.nearest-station-actions .button { min-height:2.7rem; }
+.nearest-station-actions .text-link { background:none; border:0; padding:0; cursor:pointer; font-size:.82rem; }
+.pin-field-error { display:grid; gap:.4rem; padding:.5rem; border-radius:1rem; outline:2px solid #b3261e33; }
+@media (max-width:899px) {
+  .pin-picker-map { height:min(50svh,22rem); min-height:15rem; }
+}

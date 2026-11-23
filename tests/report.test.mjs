@@ -6,12 +6,12 @@ import { preparePhoto } from "../src/lib/photo.ts";
 
 function validForm() {
   const form = new FormData();
-  for (const [key, value] of Object.entries({ title: "House keys", category: "Keys", color: "#C0C0C0", description: "Blue keyring", location_text: "Demo park", occurred_at: "2026-01-01" })) form.set(key, value);
+  for (const [key, value] of Object.entries({ title: "House keys", category: "Keys", color: "#C0C0C0", description: "Blue keyring", location_text: "Demo park", occurred_at: "2026-01-01", latitude: "8.2280", longitude: "124.2452" })) form.set(key, value);
   return form;
 }
 
 test("report validation rejects blank required fields, long values and invalid dates", () => {
-  for (const field of ["title", "category", "color", "description", "location_text", "occurred_at"]) {
+  for (const field of ["title", "category", "color", "description", "occurred_at"]) {
     const form = validForm(); form.set(field, " ");
     assert.ok(validateReport(form).errors[field]);
   }
@@ -22,6 +22,10 @@ test("report validation rejects blank required fields, long values and invalid d
   const form = validForm(); form.set("title", "x".repeat(121));
   assert.ok(validateReport(form).errors.title);
   assert.deepEqual(validateReport(validForm()).errors, {});
+  const unpinned = validForm(); unpinned.delete("latitude");
+  assert.ok(validateReport(unpinned).errors.location);
+  const blankLandmark = validForm(); blankLandmark.set("location_text", " ");
+  assert.deepEqual(validateReport(blankLandmark).errors, {});
 });
 
 test("uses account contact automatically and validates category and picked colors", () => {

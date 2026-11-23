@@ -47,14 +47,21 @@ export function validateReport(form: FormData, previous?: Pick<Report, "category
   const values = Object.fromEntries(Object.keys(limits).map(key => [key, String(form.get(key) ?? "").trim()]));
   const errors: Record<string, string> = {};
   for (const [key, limit] of Object.entries(limits)) {
-    if (!values[key] && key !== "private_details") errors[key] = `${labels[key as keyof typeof labels]} is required.`;
+    // The map pin is the location; the landmark text is optional.
+    if (!values[key] && key !== "private_details" && key !== "location_text") errors[key] = `${labels[key as keyof typeof labels]} is required.`;
     else if (values[key].length > limit) errors[key] = `Use ${limit} characters or fewer.`;
   }
+  if (!values.location_text) values.location_text = "Pinned on map";
+  const latitude = Number(form.get("latitude")), longitude = Number(form.get("longitude"));
+  const hasPin = String(form.get("latitude") ?? "").trim() !== "" && String(form.get("longitude") ?? "").trim() !== ""
+    && Number.isFinite(latitude) && Number.isFinite(longitude) && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
+  if (!hasPin) errors.location = "Place a pin on the map.";
+  const point = hasPin ? { latitude, longitude } : null;
   if (values.category && !itemCategories.includes(values.category as typeof itemCategories[number]) && values.category !== previous?.category) errors.category = "Choose a category from the list.";
   if (values.color && values.color !== "Unknown" && !isHexColor(values.color) && values.color !== previous?.color) errors.color = "Choose a color from the picker or quick palette.";
   const date = String(form.get("occurred_at") ?? "");
   const parsed = new Date(`${date}T00:00:00.000Z`);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) errors.occurred_at = "Enter a valid date.";
   else if (date > new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Singapore" })) errors.occurred_at = "Date cannot be in the future.";
-  return { values, occurred_at: Number.isFinite(parsed.getTime()) ? parsed.toISOString() : "", errors };
+  return { values, point, occurred_at: Number.isFinite(parsed.getTime()) ? parsed.toISOString() : "", errors };
 }

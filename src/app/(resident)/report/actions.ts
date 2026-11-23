@@ -22,7 +22,7 @@ export async function saveReport(kind: string, id: string | null, form: FormData
       return { errors: { form: "You cannot edit this report. It may have entered police custody." } };
     }
   }
-  const { values, occurred_at, errors: formErrors } = validateReport(form, existing);
+  const { values, point, occurred_at, errors: formErrors } = validateReport(form, existing);
   if (Object.keys(formErrors).length) return { errors: formErrors };
   const { data: profile } = await client.from("profiles").select("phone").eq("id", user.id).maybeSingle();
   const contactMethod = accountContact(profile?.phone, user.email);
@@ -41,7 +41,7 @@ export async function saveReport(kind: string, id: string | null, form: FormData
     try { photoPath = await uploadReportPhoto(client.storage.from("item-photos"), user.id, photo); }
     catch (error) { return { errors: { photo: error instanceof Error ? error.message : "Photo could not be read." } }; }
   }
-  const payload = { ...values, occurred_at, contact_method: contactMethod, preferred_station_id: preferredStation || null, ...(photoPath ? { photo_path: photoPath } : {}) };
+  const payload = { ...values, occurred_at, contact_method: contactMethod, preferred_station_id: preferredStation || null, ...(point ? { location: `SRID=4326;POINT(${point.longitude} ${point.latitude})` } : {}), ...(photoPath ? { photo_path: photoPath } : {}) };
   const query = id ? client.from("items").update(payload).eq("id", id) : client.from("items").insert({ ...payload, kind });
   const { data, error } = await query.select("id").single();
   if (error || !data) {
@@ -58,9 +58,12 @@ export async function saveReport(kind: string, id: string | null, form: FormData
 
 // Guest submission: no account needed. Reports go to staff review and are never published directly.
 export async function submitGuestReport(kind: string, form: FormData): Promise<{ errors: Record<string, string> }> {
-  if (kind !== "lost" && kind !== "found") return { errors: { form: "Invalid report type." } };
+  if (kind !== "found") return { errors: { form: "Lost reports need an account. Sign in to report a lost item." } };
   if (String(form.get("website") ?? "")) return { errors: { form: "This report could not be submitted." } };
-  const { values, occurred_at, errors } = validateReport(form);
+  const { values, point, occurred_at, errors } = validateReport(form);
+  const contact = String(form.get("contact_method") ?? "").trim();
+  if (!contact || contact.length > 250) errors.contact_method = "Add an email or phone number so station staff can reach you.";
+  if (!point) errors.location = "Place a pin on the map.";
   const station = String(form.get("preferred_station_id") ?? "");
   if (station && !isUuid(station)) errors.preferred_station_id = "Choose a valid station.";
   if (Object.keys(errors).length) return { errors };
@@ -73,7 +76,9 @@ export async function submitGuestReport(kind: string, form: FormData): Promise<{
     p_description: values.description,
     p_location_text: values.location_text,
     p_occurred_at: occurred_at,
-    p_contact_method: values.contact_method,
+    p_contact_method: contact,
+    p_latitude: point!.latitude,
+    p_longitude: point!.longitude,
     p_private_details: values.private_details || null,
     p_station: station || null,
     p_website: null,

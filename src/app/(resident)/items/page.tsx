@@ -55,8 +55,6 @@ export default async function Listings({ searchParams }: { searchParams: Promise
   if (!tabs.some(([kind]) => kind === filters.kind)) filters.kind = "";
   return <>
     <p className="eyebrow">Community discovery</p><h1 className="page-title">Browse lost and found items</h1><p className="muted mt-3">Search public reports and explore possible matches.</p>
-    <aside className="demo-disclaimer mt-5">Synthetic coursework examples appear alongside community listings and are labeled <strong>Demo example</strong>. Their photos are representative illustrations. Found examples marked <strong>Reported — Not Received</strong> do not mean police hold the item. Matching stays within the demo or real reports.</aside>
-    <p className="listing-photo-note">Only approved listings appear here. Signed-in reporters see their own uploaded photos; other reporters’ photos stay private to them and authorized staff.</p>
     <div className="browse-layout mt-6">
       <aside className="browse-rail" aria-label="Report type and filters">
         <nav className="listing-tabs" aria-label="Report type">{tabs.map(([kind, label]) => <Link key={kind} className="button secondary" href={listingsUrl({ ...filters, kind })} aria-current={kind === filters.kind ? "page" : undefined}>{label}</Link>)}</nav>
