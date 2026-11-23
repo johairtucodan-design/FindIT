@@ -315,6 +315,7 @@ export default function Locator({ stations, locations, initialLocationId = null 
         </div>}
         {activeStation && <div className="station-selected-details">
           <div className="station-details-title"><div><p className="eyebrow">SOURCE DETAILS</p><h3>{activeStation.name.value}</h3></div><span>{activeStation.address.status === "conflict" ? "Sources conflict" : "Public-source listing"}</span></div>
+          <div className="station-report-top" role="group" aria-label="Report an item at this station"><Link className="button" href={`/report/lost?station=${encodeURIComponent(activeStation.id)}`}>Report lost item here</Link><Link className="button secondary" href={`/report/found?station=${encodeURIComponent(activeStation.id)}`}>Report found item here</Link></div>
           <dl className="station-details-grid">
             <SourceDetail label="Address" field={activeStation.address} value={activeStation.address.value ?? missingLabel(activeStation.address, "Address")}/>
             <div className="station-detail-row"><dt>Phone</dt><dd>{activeStation.phone.value?.map(phone => <a className="station-phone" href={`tel:${phone.replace(/[^\d+]/g, "")}`} key={phone}>{phone}</a>) ?? missingLabel(activeStation.phone, "Phone")}</dd><dd className="station-detail-status">{fieldStatus(activeStation.phone)}</dd><dd className="station-field-sources">{activeStation.phone.sources.length ? activeStation.phone.sources.map(source => <a href={source.url} key={source.url} target="_blank" rel="noreferrer">{source.label}</a>) : <span>No public source</span>}<small>Checked {activeStation.phone.checkedAt}</small></dd>{activeStation.phone.note && <dd className="station-detail-note">{activeStation.phone.note}</dd>}</div>
@@ -324,7 +325,6 @@ export default function Locator({ stations, locations, initialLocationId = null 
           </dl>
           {activeStation.kind === "station" && <div className="station-actions">
             <button className="button secondary" type="button" disabled={!position || !shareConsent || !activeStation.coordinates.value || activeStation.coordinates.status !== "sourced" || routing} onClick={() => void showRoute(activeStation, travelMode)}>{routing ? "Loading route…" : displayedRoute ? `Refresh ${travelModeLabel(travelMode)} route` : `Show ${travelModeLabel(travelMode)} route`}</button>
-            <Link className="button" href={`/report/lost?station=${encodeURIComponent(activeStation.id)}`}>Report lost item</Link>
             {!position && <p className="report-hint">Choose a starting point to compare walking and driving routes.</p>}
           </div>}
           {displayedRoute && <section className="station-route-summary" aria-label={`${travelModeLabel(travelMode)} directions`}>

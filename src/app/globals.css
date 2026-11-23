@@ -888,3 +888,7 @@ input[aria-invalid=true], textarea[aria-invalid=true] { border-color: #b91c1c; }
 @media (max-width:899px) {
   .pin-picker-map { height:min(50svh,22rem); min-height:15rem; }
 }
+
+/* Station details: the report actions sit right under the station name, where they are seen first. */
+.station-report-top { display:flex; flex-wrap:wrap; gap:.55rem; margin:.2rem 0 .9rem; padding:.7rem; border:1px solid #b9dfca; border-radius:.9rem; background:#f1faf5; }
+.station-report-top .button { flex:1 1 11rem; min-height:2.8rem; }
